@@ -1,0 +1,65 @@
+# ZeroStressRiskAssess lab: four Ubuntu 24.04 machines, one per profile (see Dockerfile).
+# Driven by ./lab/lab.sh, which supplies the variables and the SSH key.
+name: zerostressriskassess-lab
+
+x-common: &common
+  build: &build
+    context: .
+    args:
+      UPDATE_STAMP: ${LAB_UPDATE:-none}
+  volumes:
+    - ./.ssh/lab_key.pub:/lab/authorized_keys:ro
+  # ClamAV loads its signature database into RAM and may be killed with less than 2 GB.
+  # This is a limit, not a reservation: stopped machines use no memory.
+  mem_limit: 3g
+  cpus: 2
+  restart: "no"
+  # No privileged mode, no host directories (apart from the public key), no Docker socket.
+
+services:
+  severe:
+    <<: *common
+    build: { <<: *build, args: { PROFILE: severe, UPDATE_STAMP: "${LAB_UPDATE:-none}" } }
+    image: zerostressriskassess-lab-severe:24.04
+    container_name: zerostressriskassess-lab-severe
+    hostname: lab-severe
+    # Published on 127.0.0.1 ONLY: reachable from this computer, not from the local network.
+    # ZeroStressRiskAssess scans the container IP, where all ports are visible.
+    ports: ["127.0.0.1:2222:22", "127.0.0.1:2121:21"]
+    networks: { lab: { ipv4_address: "${LAB_PREFIX:-172.28.10}.10" } }
+
+  medium:
+    <<: *common
+    build: { <<: *build, args: { PROFILE: medium, UPDATE_STAMP: "${LAB_UPDATE:-none}" } }
+    image: zerostressriskassess-lab-medium:24.04
+    container_name: zerostressriskassess-lab-medium
+    hostname: lab-medium
+    ports: ["127.0.0.1:2223:22"]
+    networks: { lab: { ipv4_address: "${LAB_PREFIX:-172.28.10}.11" } }
+
+  clean:
+    <<: *common
+    build: { <<: *build, args: { PROFILE: clean, UPDATE_STAMP: "${LAB_UPDATE:-none}" } }
+    image: zerostressriskassess-lab-clean:24.04
+    container_name: zerostressriskassess-lab-clean
+    hostname: lab-clean
+    ports: ["127.0.0.1:2224:22"]
+    networks: { lab: { ipv4_address: "${LAB_PREFIX:-172.28.10}.12" } }
+
+  secure:
+    <<: *common
+    build: { <<: *build, args: { PROFILE: secure, UPDATE_STAMP: "${LAB_UPDATE:-none}" } }
+    image: zerostressriskassess-lab-secure:24.04
+    container_name: zerostressriskassess-lab-secure
+    hostname: lab-secure
+    ports: ["127.0.0.1:2225:22"]
+    networks: { lab: { ipv4_address: "${LAB_PREFIX:-172.28.10}.13" } }
+    # Required only to load the firewall rules (nftables) INSIDE the container; the host is not affected.
+    cap_add: [NET_ADMIN]
+
+networks:
+  lab:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: "${LAB_PREFIX:-172.28.10}.0/24"
