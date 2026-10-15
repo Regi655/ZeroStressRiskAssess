@@ -4,7 +4,7 @@
 `risk = impact × likelihood`.**
 
 ZeroStressRiskAssess collects information about the machine from several sources (its own checks plus third-party
-tools: nmap, ssh-audit, Lynis, Grype, ClamAV), merges findings that describe the same problem, assigns each problem a
+tools: nmap, ssh-audit, Lynis, Grype, Trivy, ClamAV, chkrootkit, rkhunter), merges findings that describe the same problem, assigns each problem a
 justified **impact** (1–5) and **likelihood** (1–5), and writes a report (HTML to open in a browser, plus Markdown and
 JSON) containing:
 
@@ -17,11 +17,11 @@ JSON) containing:
 The assessment can run **from outside** (from your machine, the *controller*, which first looks at the target from the
 network and then logs in over SSH) or **from inside** (`--local`, on the machine itself).
 
-![Risk matrix from the lab](docs/screenshot-matrix.png)
+![Risk matrix from the lab](ZeroStressRiskAssess/docs/screenshot-matrix.png)
 
 *Real report from the Docker lab included in the repository (fake data and credentials). Full example:
-[`docs/sample-report.html`](docs/sample-report.html) (download it and open it in a browser) and
-[`docs/sample-report.md`](docs/sample-report.md).*
+[`ZeroStressRiskAssess/docs/sample-report.html`](ZeroStressRiskAssess/docs/sample-report.html) (download it and open it in a browser) and
+[`ZeroStressRiskAssess/docs/sample-report.md`](ZeroStressRiskAssess/docs/sample-report.md).*
 
 ---
 
@@ -152,12 +152,12 @@ is intended only for automation in authorised contexts).
  1. nmap + NSE scripts ───── from the network ──────▶  open ports, services, anonymous FTP...
  2. ssh-audit          ───── from the network ──────▶  weak SSH algorithms
  3. SSH connection (paramiko), root/sudo check ─────▶
- 4. installs ClamAV (apt) ──────────────────────────▶  removed at the end
+ 4. installs ClamAV + chkrootkit (apt) ─────────────▶  removed at the end
  5. internal checks ────────────────────────────────▶  accounts, sudo, sshd_config, permissions, services,
                                                          firewall, kernel, updates, MySQL, FTP...
- 6. portable Lynis: copied to /tmp, executed, deleted
+ 6. portable Lynis: copied to /tmp, executed, deleted; chkrootkit; rkhunter only if already installed
  7. package inventory ◀────────────────────────────── dpkg-query + apt list --upgradable
-    → CycloneDX SBOM → Grype (on the controller) → CVEs
+    → CycloneDX SBOM → Grype and/or Trivy (on the controller) → CVEs
  8. cleanup (always, even on errors or Ctrl-C)
  9. correlation → impact × likelihood → reports/<host>_<date>/report.html (+ .md, .json)
 ```
@@ -183,14 +183,32 @@ With `--local`, steps 1–2 and the SSH connection are skipped: the report state
 | Lynis | recommended | ~250 hardening checks | cloned by `setup.sh` into `vendor/lynis` |
 | nmap | recommended | ports and services seen from the network, exposure | `sudo apt install nmap` |
 | ssh-audit | recommended | SSH algorithms | `sudo apt install ssh-audit` (or `pipx install ssh-audit`) |
-| Grype | recommended | CVEs of the installed packages | `curl -sSfL https://get.anchore.io/grype \| sudo sh -s -- -b /usr/local/bin` |
+| Grype | recommended | CVEs of the installed packages; the only source of the KEV flag (actively exploited) | `curl -sSfL https://get.anchore.io/grype \| sudo sh -s -- -b /usr/local/bin` |
+| Trivy | optional | second CVE source: with Grype the results are merged, alone it replaces Grype | Aqua's signed APT repository, see below |
 | Docker + compose plugin | lab only | test machines | <https://docs.docker.com/engine/install/ubuntu/> |
 
 The "recommended" tools are optional: if one is missing, the corresponding check is **skipped** and the report says
 so in the *Checks performed* section. The risk is still computed from the available sources.
 
-**Outbound connections required from the controller**: GitHub (Lynis clone); on its first run Grype downloads its
-vulnerability database (~60–200 MB) from `grype.anchore.io`. Without network access the CVE check fails and reports it.
+**Outbound connections required from the controller**: GitHub (Lynis clone); on their first run Grype downloads its
+vulnerability database (~60–200 MB) from `grype.anchore.io` and Trivy from `mirror.gcr.io` / `ghcr.io`. Without network
+access the CVE check fails and reports it.
+
+**Installing Trivy safely.** In March 2026 Trivy was hit by a supply-chain attack: the **v0.69.4** release (binary
+and container image) was published by attackers with stolen credentials and steals secrets from the machine that
+runs it (CVE-2026-33634, in the CISA KEV catalogue). Install it from Aqua's **signed APT repository**, so that `apt`
+verifies every package against the repository key, rather than with `curl | sh` scripts:
+
+```bash
+sudo apt-get install wget gnupg
+wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
+echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+sudo apt-get update && sudo apt-get install trivy
+trivy --version            # must NOT be 0.69.4
+```
+
+ZeroStressRiskAssess refuses to run Trivy 0.69.4 even if it is installed, and `setup.sh` flags it. If that version
+ever ran on your machine, treat the secrets reachable from it (SSH keys, tokens, passwords) as exposed and rotate them.
 
 ### Target (the machine being assessed)
 
@@ -200,11 +218,11 @@ vulnerability database (~60–200 MB) from `grype.anchore.io`. Without network a
 | **running SSH service** (remote mode only) | the tool logs in over SSH |
 | a **root** user, or a user with **sudo** | many files read (shadow, sudoers, configurations) are root-only |
 | `bash`, `tar`, `sha256sum`, `coreutils` | present on any Ubuntu; needed by portable Lynis |
-| Internet access for `apt` (recommended) | to install ClamAV and update its signatures. Without it ClamAV is skipped and the report says so |
+| Internet access for `apt` (recommended) | to install ClamAV and chkrootkit and update the ClamAV signatures. Without it those checks are skipped and the report says so |
 | ~500 MB free in `/var` and `/tmp` | ClamAV and its signatures, temporary Lynis copy |
 
-Nothing has to be installed manually on the target: ZeroStressRiskAssess brings Lynis, installs ClamAV and removes
-everything at the end.
+Nothing has to be installed manually on the target: ZeroStressRiskAssess brings Lynis, installs ClamAV and chkrootkit
+and removes everything at the end. rkhunter is used only if the target already has it (see section 10).
 
 ---
 
@@ -225,6 +243,7 @@ External programs:
   [missing] nmap            -> sudo apt install nmap
   [missing] ssh-audit       -> sudo apt install ssh-audit   (or: pipx install ssh-audit)
   [missing] grype (CVE)     -> curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+  [missing] trivy (CVE, optional second source) -> see README, Requirements (Aqua's signed APT repository)
   [ok]      git
   [missing] docker (lab only) -> https://docs.docker.com/engine/install/ubuntu/
   [ok]      Lynis 3.1.8 in vendor/lynis
@@ -284,7 +303,7 @@ Result (counts: C=critical H=high M=medium L=low):
 4 of 4 profiles as expected. Reports in reports/lab-PROFILE/.
 ```
 
-![Report of the secure profile: overall risk LOW](docs/screenshot-secure.png)
+![Report of the secure profile: overall risk LOW](ZeroStressRiskAssess/docs/screenshot-secure.png)
 
 *The `secure` profile passes: only two low problems remain (Lynis suggestions and recently modified account files,
 which is normal for a freshly created machine).*
@@ -353,7 +372,7 @@ zsra > scan 192.168.1.50 -u admin -i ~/.ssh/id_ed25519          # assess a host 
 zsra > local --skip clamav                     # assess this machine (start zsra with sudo)
 zsra > reports                                 # latest reports, newest first, with overall risk
 zsra > open 1                                  # open HTML report number 1 in the browser
-zsra > tools                                   # nmap, ssh-audit, grype, Lynis: what is present and what is missing
+zsra > tools                                   # nmap, ssh-audit, grype, trivy, Lynis: what is present and what is missing
 zsra > options                                 # all options accepted by scan/local
 zsra > version                                 # tool version
 zsra > clear                                   # clear the screen
@@ -404,20 +423,22 @@ sudo .venv/bin/zsra --local
 ```
 
 In this mode nmap and ssh-audit do not run (they would look at the machine from inside, i.e. without any firewall in
-between): the likelihood of network problems is not adjusted for exposure, and the report says so. Grype, if
-installed, runs on the machine itself.
+between): the likelihood of network problems is not adjusted for exposure, and the report says so. Grype and Trivy, if
+installed, run on the machine itself.
 
 ### Speeding up or limiting the assessment
 
 ```bash
 zsra HOST -u admin -i KEY --clamav-quick          # ClamAV only on the usual malware locations
-zsra HOST -u admin -i KEY --skip clamav lynis     # without the two slowest checks (≈ 1 minute)
+zsra HOST -u admin -i KEY --skip clamav lynis     # without the two slowest checks (≈ 2–3 minutes)
+zsra HOST -u admin -i KEY --skip chkrootkit       # without the rootkit check (≈ 1–2 minutes less)
 zsra HOST -u admin -i KEY --nmap-ports -          # all 65535 ports (slower)
 ```
 
 ### Interrupted run
 
-If the assessment is interrupted abruptly (lost connection, killed process), ClamAV may have been left installed:
+If the assessment is interrupted abruptly (lost connection, killed process), ClamAV and chkrootkit may have been left
+installed:
 
 ```bash
 zsra HOST -u admin -i KEY --recover
@@ -446,7 +467,7 @@ zsra HOST -u admin -i KEY --recover
 | `--skip` | — | checks to skip (list in `zsra --help`) |
 | `--scan-timeout` | 60 | maximum minutes per check |
 | `--out-dir` | `./reports` | report directory |
-| `--keep-tools` | no | do not remove ClamAV at the end (debugging only) |
+| `--keep-tools` | no | do not remove ClamAV and chkrootkit at the end (debugging only) |
 | `--recover` | — | cleanup after an interrupted run |
 | `--yes` | no | do not ask for the authorisation confirmation |
 | `--no-banner` | no | do not show the mascot at startup (also `ZSRA_NO_BANNER=1`) |
@@ -504,7 +525,9 @@ everything), shown together with the count per level.
    likelihood drops by 2 (the firewall reduces the risk, it does not remove it).
 4. **CVEs**: likelihood 5 if the CVE is in the CISA **KEV** catalogue (actively exploited), 4 if the CVSS vector is
    network with high/critical severity, 3 otherwise. Only CVEs whose **update is already available on the target**
-   count as "fix now" (version comparison performed as `dpkg` does).
+   count as "fix now" (version comparison performed as `dpkg` does). With both Grype and Trivy, the same CVE on the same
+   package counts once, with the more severe of the two ratings; each CVE records which scanner found it, and the
+   report shows how many were found by both, only by Grype and only by Trivy. The KEV flag comes from Grype only.
 5. **Fallback**: a finding no rule recognises gets values from its severity (critical 5×4, high 4×3, medium 3×3,
    low 2×2) and is marked *(estimate)* in the report.
 
@@ -521,8 +544,9 @@ context (see ISO/IEC 27005 and the OWASP Risk Rating Methodology in the referenc
 | Ports and services seen from the network | **nmap** `-sV` + "safe" NSE scripts | exposed services, anonymous FTP, DNS zone transfer, certificates |
 | SSH algorithms | **ssh-audit** | weak key exchange / ciphers / MACs |
 | General hardening | **Lynis** (portable) | ~250 tests, grouped warnings and suggestions |
-| Known vulnerabilities | **Grype** on the package SBOM | CVEs fixable now, pending, without a fix |
+| Known vulnerabilities | **Grype** and/or **Trivy** on the package SBOM | CVEs fixable now, pending, without a fix |
 | Malware | **ClamAV** | infected files (including the EICAR test file) |
+| Rootkits | **chkrootkit** (installed temporarily), **rkhunter** (only if already present) | tampered commands, known rootkit and backdoor signatures, hidden files, sniffers; every "INFECTED" is cross-checked with the package checksums (`dpkg -V`), so known false positives are rated low |
 | Accounts | native | multiple UID 0, duplicate UIDs, empty passwords, shells on system accounts |
 | sudo | native | NOPASSWD, `!authenticate`, rules on commands that spawn shells |
 | SSH (configuration) | native | `PermitRootLogin`, `PermitEmptyPasswords`, password login, `MaxAuthTries` |
@@ -569,7 +593,7 @@ commit reports** of real machines (the examples in `docs/` come from the lab and
 
 At the end, a summary with the overall risk and the first 10 rows of the table is printed on the terminal.
 
-![Risk table](docs/screenshot-table.png)
+![Risk table](ZeroStressRiskAssess/docs/screenshot-table.png)
 
 In the table each row states **why** it has that likelihood: for R01, "port 22 reachable from the controller" is what
 nmap actually measured. Had the port been closed by the firewall, the likelihood
@@ -579,12 +603,17 @@ would have dropped by 2.
 
 ## 10. What is left on the target (nothing)
 
-- **ClamAV** is installed with `apt` only if it was not already present, and removed at the end (together with the
-  dependencies installed for it). A manifest in `/var/lib/zerostressriskassess` records what to remove, even after an
-  interruption (`--recover`).
+- **ClamAV** and **chkrootkit** are installed with `apt` only if they were not already present, and removed at the end
+  (together with the dependencies installed for them). chkrootkit needs `strings`, from `binutils`: on normal systems it
+  is already there and is left untouched; on minimal systems it is installed and removed with chkrootkit. A manifest in
+  `/var/lib/zerostressriskassess` records what to remove, even after an interruption (`--recover`).
+- **rkhunter** is never installed. Its file check compares the system with a baseline created earlier: a baseline
+  created now, on a machine that may already be compromised, would certify tampered files as good. If the target
+  already has rkhunter, it is used as it is, the date of its baseline is shown in the report, and `rkhunter --propupd`
+  is never run.
 - **Lynis** is not installed: it is copied as an in-memory archive, verified with SHA-256, extracted into a temporary
   root-owned directory (`/tmp/zerostressriskassess-lynis.XXXXXX`, mode 700), executed and deleted.
-- **Grype** runs on the controller: only the package list is read from the target.
+- **Grype** and **Trivy** run on the controller: only the package list is read from the target.
 - No service is modified or restarted. System logs record the SSH connection and the sudo commands as usual (as they
   should).
 
@@ -592,9 +621,9 @@ would have dropped by 2.
 
 ## 11. CVE verification utilities
 
-`tools/` contains two scripts to verify the CVE part (they require Grype and, for the comparison, Trivy):
+`tools/` contains two scripts to verify the CVE part (they require Grype and/or Trivy):
 
-- `tools/verify_sbom.py` — checks that Grype reads the SBOM generated by ZeroStressRiskAssess the same way it would
+- `tools/verify_sbom.py` — checks that Grype (or Trivy, with `--trivy`) reads the SBOM generated by ZeroStressRiskAssess the same way it would
   read the machine itself (same CVEs found);
 - `tools/compare_cve.py` — compares the results of two CVE scanners (e.g. Grype and Trivy) on the same target.
 
@@ -603,7 +632,14 @@ Run without arguments, they print their usage. Example with the lab running:
 ```bash
 grype zerostressriskassess-lab-severe:24.04 -o json > grype-lab.json
 .venv/bin/python3 tools/verify_sbom.py zerostressriskassess-lab-severe grype-lab.json
+
+trivy image --scanners vuln --format json -o trivy-lab.json zerostressriskassess-lab-severe:24.04
+.venv/bin/python3 tools/verify_sbom.py zerostressriskassess-lab-severe trivy-lab.json --trivy
 ```
+
+The Trivy integration was written against Trivy's documented JSON and SBOM formats, but in the development
+environment Trivy's database could not be downloaded: the second command above is the check to run once on a machine
+with Internet access. "in common" should match "A"; missing CVEs point to a difference in how the SBOM is read.
 
 ---
 
@@ -614,10 +650,13 @@ grype zerostressriskassess-lab-severe:24.04 -o json > grype-lab.json
 | `zsh: command not found: zsra` | the virtual environment is not active: `source .venv/bin/activate` (or use `.venv/bin/zsra`) |
 | `SSHException: Server '...' not found in known_hosts` | the target is not in `known_hosts`: run `ssh user@host` once and verify the fingerprint, or use `--accept-new-hostkey` |
 | `Root privileges are required` | the user has no sudo, or sudo asks for a password: add `--ask-sudo-pass` |
-| in the report: `nmap / ssh-audit / grype not installed` | install it on the **controller** (section 2) or ignore it: the check is skipped and declared |
+| in the report: `nmap / ssh-audit / grype / trivy not installed` | install it on the **controller** (section 2) or ignore it: the check is skipped and declared |
 | in the report: `Lynis not found on the controller` | `./setup.sh` or `git clone https://github.com/CISOfy/lynis vendor/lynis` |
 | `ClamAV signatures not updated` | the target cannot reach `database.clamav.net`: ClamAV cannot work, and the report says so |
-| CVE: database error | Grype's first run must download its database: the controller needs Internet access (`grype db update`) |
+| `chkrootkit NOT run: programs missing on the target` | chkrootkit stopped because a program it needs is missing (usually `strings`): install `binutils` or let the tool install it (it does unless the package is unavailable) |
+| `chkrootkit: hidden-directory check (chkdirs) not reliable on this file system` | normal on BTRFS and in containers (overlayfs): chkdirs counts directory links, which do not add up on those file systems. Not a finding |
+| CVE: database error | Grype's and Trivy's first run must download their databases: the controller needs Internet access (`grype db update`, `trivy image --download-db-only`) |
+| `Trivy 0.69.4 is the compromised release` | that version is malicious (CVE-2026-33634): remove it, rotate the secrets reachable from the machine, reinstall from the signed APT repository (section 2) |
 | `./lab/lab.sh up`: `permission denied ... docker.sock` | your user is not in the `docker` group (section 3) |
 | lab: network already in use | `LAB_PREFIX=10.99.0 ./lab/lab.sh up` |
 | lab: `container name ... is already in use` after updating the repository | containers created with the old Italian profile names: `docker ps -a --filter name=zerostressriskassess-lab-` and remove them with `docker rm -f NAME` |
@@ -642,9 +681,9 @@ ZeroStressRiskAssess/
 │   ├── correlate.py          merging findings into problems, MITRE/CIS
 │   ├── report.py             Markdown/JSON report
 │   ├── htmlreport.py         HTML report (the one to read)
-│   ├── cve.py, vercmp.py     package inventory, SBOM, Grype, dpkg version comparison
+│   ├── cve.py, vercmp.py     package inventory, SBOMs, Grype/Trivy, dpkg version comparison
 │   ├── portable.py           portable Lynis
-│   ├── toolmgr.py            ClamAV installation/removal
+│   ├── toolmgr.py            ClamAV/chkrootkit installation and removal, rkhunter detection
 │   ├── ssh_client.py         remote (SSH) and local execution
 │   └── scanners/             one module per check
 ├── docs/                     sample report and screenshots (from the lab)
@@ -663,12 +702,10 @@ To add a check: a module in `zerostressriskassess/scanners/` returning a `ScanRe
 Features already implemented in the previous project (`DeepSecurityScan`), to be reintegrated:
 
 - **RHEL / Rocky / Alma** support (dnf, EPEL, SELinux);
-- **chkrootkit / rkhunter** as optional rootkit checks;
 - report **encryption and signing** (age) and secure delivery;
 - **comparison between two runs** (what was fixed, what is new);
 - **resource and disk** checks (space, inodes, disk health);
-- `--no-install` option (nothing installed on the target: ClamAV skipped);
-- **Trivy** as an optional second CVE source.
+- `--no-install` option (nothing installed on the target: ClamAV and chkrootkit skipped).
 
 New:
 
@@ -702,10 +739,14 @@ Vulnerabilities
 
 Tools
 - Grype: <https://github.com/anchore/grype>
+- Trivy: <https://github.com/aquasecurity/trivy> — installation: <https://trivy.dev/docs/dev/getting-started/installation/>
+- CVE-2026-33634 (Trivy supply-chain compromise): <https://cve.circl.lu/cve/CVE-2026-33634>
 - Lynis: <https://github.com/CISOfy/lynis> — documentation: <https://cisofy.com/documentation/lynis/>
 - nmap: <https://nmap.org/book/man.html> — NSE scripts: <https://nmap.org/nsedoc/>
 - ssh-audit: <https://github.com/jtesta/ssh-audit>
 - ClamAV: <https://docs.clamav.net/>
+- chkrootkit: <https://www.chkrootkit.org/>
+- rkhunter: <https://rkhunter.sourceforge.net/>
 - Paramiko: <https://docs.paramiko.org/>
 - Docker Engine on Ubuntu: <https://docs.docker.com/engine/install/ubuntu/>
 
