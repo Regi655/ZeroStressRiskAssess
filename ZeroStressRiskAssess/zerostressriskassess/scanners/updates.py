@@ -72,44 +72,22 @@ def _security_by_pocket(rem, pkgs):
     return {l[4:] for l in out.splitlines() if l.startswith("SEC|")} & set(pkgs)
 
 
-def _dnf(ctx, res):
-    rem = ctx.rem
-    s = rem.run("dnf -q check-update --security", sudo=True, timeout=300)
-    if s.rc not in (0, 100):  # the "security" plugin may be missing: fall back to the full list
-        s = rem.run("dnf -q check-update", sudo=True, timeout=300)
-        sec_known = False
-    else:
-        sec_known = True
-    names = [l.split()[0].rsplit(".", 1)[0] for l in s.out.splitlines()
-             if len(l.split()) == 3 and "." in l.split()[0]]
-    allp = names if s.rc == 100 else []
-    return allp, (allp if sec_known else []), sec_known
-
-
 def run(ctx) -> ScanResult:
     res, rem = ScanResult("updates"), ctx.rem
-    sec_known = True
-    if ctx.osinfo.pkg_mgr == "apt":
-        # `upgrade` holds back packages that require installing/removing others ("kept back");
-        # `dist-upgrade` includes them. A held-back package can carry a security fix (e.g. netplan.io):
-        # counting vulnerabilities requires the full list, as apt-check does.
-        _, _, held, _ = parse_apt_sim(rem.run("apt-get -s upgrade 2>&1", sudo=True, timeout=300).out)
-        allp, sec, _, new_sec = parse_apt_sim(rem.run("apt-get -s dist-upgrade 2>&1", sudo=True, timeout=300).out)
-        allp, _ = split_pkgs(allp)  # names end up in a command: valid names only
-        sec = sorted(set(sec) | _security_by_pocket(rem, allp))
-        # Cross-check with Ubuntu's apt-check (if present): prints "total;security".
-        ac = rem.run("/usr/lib/update-notifier/apt-check 2>&1").out.strip()
-        if re.fullmatch(r"\d+;\d+", ac):
-            res.data["apt_check"] = ac
-        unatt = rem.run("dpkg-query -W -f='${Status}' unattended-upgrades 2>/dev/null").out
-        per = rem.run("apt-config dump 2>/dev/null | grep -i 'APT::Periodic::Unattended-Upgrade'").out
-        auto = "install ok installed" in unatt and '"1"' in per
-        auto_known = True
-    else:
-        allp, sec, sec_known = _dnf(ctx, res)
-        held, new_sec = [], []
-        auto = rem.run("systemctl is-enabled dnf-automatic.timer dnf-automatic-install.timer 2>/dev/null").rc == 0
-        auto_known = True
+    # `upgrade` holds back packages that require installing/removing others ("kept back");
+    # `dist-upgrade` includes them. A held-back package can carry a security fix (e.g. netplan.io):
+    # counting vulnerabilities requires the full list, as apt-check does.
+    _, _, held, _ = parse_apt_sim(rem.run("apt-get -s upgrade 2>&1", sudo=True, timeout=300).out)
+    allp, sec, _, new_sec = parse_apt_sim(rem.run("apt-get -s dist-upgrade 2>&1", sudo=True, timeout=300).out)
+    allp, _ = split_pkgs(allp)  # names end up in a command: valid names only
+    sec = sorted(set(sec) | _security_by_pocket(rem, allp))
+    # Cross-check with Ubuntu's apt-check (if present): prints "total;security".
+    ac = rem.run("/usr/lib/update-notifier/apt-check 2>&1").out.strip()
+    if re.fullmatch(r"\d+;\d+", ac):
+        res.data["apt_check"] = ac
+    unatt = rem.run("dpkg-query -W -f='${Status}' unattended-upgrades 2>/dev/null").out
+    per = rem.run("apt-config dump 2>/dev/null | grep -i 'APT::Periodic::Unattended-Upgrade'").out
+    auto = "install ok installed" in unatt and '"1"' in per
 
     allp, bad = split_pkgs(allp)
     sec = [p for p in sec if p in allp]
@@ -143,8 +121,6 @@ def run(ctx) -> ScanResult:
                 + (f" (including critical components: {', '.join(core[:8])})" if core else ""), sec_detail)
     elif n_sec:
         res.add("medium", f"{n_sec} security updates not installed", sec_detail)
-    elif allp and not sec_known:
-        res.add("medium", f"{len(allp)} updates to install (the security ones cannot be identified)", sample)
     elif allp:
         res.add("low", f"{n_all} non-security updates to install", sample)
     else:
@@ -155,9 +131,9 @@ def run(ctx) -> ScanResult:
         res.add("low", f"{len(held)} packages held back (kept back): they require a 'full' upgrade",
                 ", ".join(held[:15]))
 
-    if auto_known and not auto:
+    if not auto:
         res.add("low", "Automatic security updates not enabled",
-                "Recommended: unattended-upgrades (apt) or dnf-automatic (dnf).")
+                "Recommended: unattended-upgrades (sudo apt install unattended-upgrades).")
 
     rb = rem.run("test -e /var/run/reboot-required && cat /var/run/reboot-required.pkgs 2>/dev/null; "
                  "test -e /var/run/reboot-required").rc == 0

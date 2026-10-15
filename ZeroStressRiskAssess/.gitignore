@@ -30,6 +30,8 @@ lab/.ssh/
 .env
 *.pem
 *.key
+# archive of removed code (local only, see removed-code.md)
+removed-code.md
 # Grype output or test reports saved inside re-included directories
 grype-*.json
 report.json

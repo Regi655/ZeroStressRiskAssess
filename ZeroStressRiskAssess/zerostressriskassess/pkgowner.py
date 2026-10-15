@@ -25,22 +25,20 @@ def owned(ctx, path: str) -> bool:
     """True if at least one form of the path belongs to a package (the exit code is used rather than
     the text, so it works with any locale).
     """
-    tool = "dpkg -S" if ctx.osinfo.pkg_mgr == "apt" else "rpm -qf"
     for v in path_variants(path):
-        if ctx.rem.run(f"{tool} {shlex.quote(v)}").rc == 0:
+        if ctx.rem.run(f"dpkg -S {shlex.quote(v)}").rc == 0:
             return True
     return False
 
 
 def package_of(ctx, path: str):
     """Name of the package owning the file, or None."""
-    tool = "dpkg -S" if ctx.osinfo.pkg_mgr == "apt" else "rpm -qf --qf '%{NAME}\\n'"
     for v in path_variants(path):
-        r = ctx.rem.run(f"{tool} {shlex.quote(v)} 2>/dev/null")
+        r = ctx.rem.run(f"dpkg -S {shlex.quote(v)} 2>/dev/null")
         if r.rc == 0 and r.out.strip():
             first = r.out.splitlines()[0]
-            # dpkg: "coreutils: /usr/bin/ls" or "libc6:amd64: /lib/..."; rpm: "coreutils"
-            name = first.split(":")[0].strip() if ctx.osinfo.pkg_mgr == "apt" else first.strip()
+            # "coreutils: /usr/bin/ls" or "libc6:amd64: /lib/..."
+            name = first.split(":")[0].strip()
             return name if _PKG_NAME.fullmatch(name) else None
     return None
 
@@ -56,8 +54,7 @@ def verify_file(ctx, path: str):
     pkg = package_of(ctx, path)
     if not pkg:
         return None, None
-    tool = "dpkg -V " if ctx.osinfo.pkg_mgr == "apt" else "rpm -V "
-    out = ctx.rem.run(tool + shlex.quote(pkg), sudo=True, timeout=300).out
+    out = ctx.rem.run("dpkg -V " + shlex.quote(pkg), sudo=True, timeout=300).out
     names = set(path_variants(path))
     for line in out.splitlines():
         tok = line.split()

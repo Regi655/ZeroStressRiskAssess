@@ -50,7 +50,7 @@ def build_parser():
                     help="checks to skip: " + ", ".join(ALL_NAMES))
     ap.add_argument("--scan-timeout", type=int, default=60, metavar="MINUTES", help="maximum time per check")
     ap.add_argument("--out-dir", default="./reports", help="report directory (default ./reports)")
-    ap.add_argument("--keep-tools", action="store_true", help="do NOT remove ClamAV at the end (debugging)")
+    ap.add_argument("--keep-tools", action="store_true", help="do NOT remove ClamAV and chkrootkit at the end (debugging)")
     ap.add_argument("--recover", action="store_true", help="clean up the target after an interrupted run")
     ap.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     ap.add_argument("--no-banner", action="store_true", help="do not show the startup banner (also: ZSRA_NO_BANNER=1)")
@@ -79,6 +79,16 @@ def main(argv=None) -> int:
         ap.error("invalid --nmap-ports: only digits, commas, hyphens, T: and U: are allowed")
     if args.ask_key_pass and not args.key:
         ap.error("--ask-key-pass requires -i/--key")
+    # "~" is expanded by the shell, but not inside the zsra console (it splits the line itself, with no shell
+    # in between): expanding here makes both work the same way.
+    for name in ("key", "lynis_dir", "out_dir"):
+        if getattr(args, name):
+            setattr(args, name, os.path.expanduser(getattr(args, name)))
+    # Checked BEFORE any work: otherwise a wrong path is discovered only after nmap and ssh-audit have run.
+    if args.key and not os.path.isfile(args.key):
+        ap.error(f"-i/--key: file not found: {args.key}")
+    if args.key and not os.access(args.key, os.R_OK):
+        ap.error(f"-i/--key: file not readable by the current user: {args.key}")
     if not 5 <= args.scan_timeout <= 600:
         ap.error("--scan-timeout: between 5 and 600 minutes")
 
@@ -105,8 +115,9 @@ def main(argv=None) -> int:
         except Exception as exc:
             print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
             return 2
-    if not confirm(f"Assessment of {'this machine' if args.local else args.host}: ClamAV will be installed and then removed "
-                   "(unless excluded with --skip clamav) and Lynis will be copied temporarily.\n"
+    if not confirm(f"Assessment of {'this machine' if args.local else args.host}: ClamAV and chkrootkit will be "
+                   "installed and then removed (unless excluded with --skip clamav chkrootkit) and Lynis will be "
+                   "copied temporarily.\n"
                    "Do you have the system owner's authorisation?"):
         print("Aborted.")
         return 1

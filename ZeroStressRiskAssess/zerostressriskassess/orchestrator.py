@@ -84,9 +84,14 @@ def assess(rem, opts: Options, out_dir: str, log=print) -> dict:
             if available(opts.lynis_dir):
                 portable["lynis"] = check_dir(opts.lynis_dir)
         tm = ToolManager(rem, ctx.osinfo, keep=opts.keep_tools, skip=opts.skip, portable=portable)
+        # Tools handled by the ToolManager: installed now and removed at the end (ClamAV, chkrootkit), or only
+        # detected (rkhunter). Nothing to prepare if all their checks are skipped.
+        managed = [t for t in ("clamav", "chkrootkit", "rkhunter") if t not in opts.skip]
         try:
-            if "clamav" not in opts.skip:
-                log("[+] Preparation: ClamAV (installed now, removed at the end) ...")
+            if managed:
+                installed = [t for t in managed if t != "rkhunter"]
+                log("[+] Preparation: " + (", ".join(installed) + " (installed now, removed at the end)"
+                                           if installed else "checking whether rkhunter is present") + " ...")
                 tm.prepare()
                 ctx.tools_ok = tm.available
                 ctx.cache["tool_installed"] = set(tm.installed)
@@ -94,7 +99,7 @@ def assess(rem, opts: Options, out_dir: str, log=print) -> dict:
                 if name not in opts.skip:
                     results.append(_run_scanner(name, fn, ctx, log))
         finally:
-            if "clamav" not in opts.skip:
+            if managed:
                 log("[+] Cleanup: removing what was installed ...")
                 tm.cleanup()
             tool_log = tm.log
@@ -103,10 +108,10 @@ def assess(rem, opts: Options, out_dir: str, log=print) -> dict:
 
     sources = ["native checks (accounts, sudo, SSH, permissions, services, kernel...)"]
     labels = {"nmap": "nmap + NSE scripts", "ssh_audit": "ssh-audit", "lynis": "Lynis (portable)",
-              "cve": "Grype (CVE)", "clamav": "ClamAV"}
+              "cve": "CVE:", "clamav": "ClamAV"}
     for r in results:
         if r.name in labels and r.status == "ok":
-            extra = r.data.get("lynis_version") or r.data.get("grype_db") or ""
+            extra = r.data.get("lynis_version") or " + ".join(r.data.get("sources") or []) or ""
             sources.append(labels[r.name] + (f" {extra}" if extra else ""))
     meta = {"target": rem.host, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M"), "os": ctx.osinfo.pretty, "kernel": ctx.osinfo.kernel,
             "container": ctx.osinfo.container, "version": __version__, "sources": sources,

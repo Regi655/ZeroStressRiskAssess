@@ -130,10 +130,11 @@ class Console(cmd.Cmd):
 
     def do_tools(self, line):
         """tools
-    Check the external programs on the controller (nmap, ssh-audit, grype, Lynis)."""
+    Check the external programs on the controller (nmap, ssh-audit, grype, trivy, Lynis)."""
         from .cli import DEFAULT_LYNIS
         for name, hint in (("nmap", "sudo apt install nmap"), ("ssh-audit", "sudo apt install ssh-audit"),
-                           ("grype", "curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin")):
+                           ("grype", "curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin"),
+                           ("trivy", "see README, Requirements (Aqua's signed APT repository)")):
             where = shutil.which(name)
             self.stdout.write(f"  {'[ok]     ' if where else '[missing]'} {name:10} {where or hint}\n")
         ok = os.path.isfile(os.path.join(DEFAULT_LYNIS, "lynis"))

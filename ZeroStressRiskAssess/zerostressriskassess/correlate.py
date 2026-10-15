@@ -111,9 +111,8 @@ FIX = {
     "port:2375": "Remove -H tcp:// (or use --tlsverify with client certificates); use the local socket.",
     "ssh-algos": "Remove the listed algorithms from Ciphers/MACs/KexAlgorithms/HostKeyAlgorithms and verify "
                  "with sshd -T and ssh-audit.",
-    "patch": "Install the available updates (apt upgrade / dnf upgrade) and restart the services or the "
-             "machine if needed. On Rocky/RHEL, packages that dnf does not mark as 'security' may also "
-             "fix CVEs (e.g. openssl-fips-provider).",
+    "patch": "Install the available updates (sudo apt update && sudo apt upgrade) and restart the services or "
+             "the machine if needed.",
     "lynis-tips": "Configuration improvements, not urgent problems: the list with the Lynis IDs is in the "
                   "lynis section.",
     "dns-axfr": "allow-transfer { secondary server addresses; }; in the options of named.conf (or "

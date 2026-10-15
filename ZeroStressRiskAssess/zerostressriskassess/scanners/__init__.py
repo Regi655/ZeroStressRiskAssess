@@ -6,8 +6,8 @@ INTERNAL checks run on the target (over SSH, or directly with --local): fast rea
 heavy ones last (Lynis ~90 s, ClamAV several minutes).
 """
 from . import (accounts, clamav_scan, containers, cve_scan, dns, firewall, ftp, hardening, integrity, listeners,
-               lynis_scan, mysql, nmap_scan, permissions, persistence, platform, services, ssh_audit, sshd_conf,
-               sudoers, updates)
+               lynis_scan, mysql, nmap_scan, permissions, persistence, platform, rootkit, services, ssh_audit,
+               sshd_conf, sudoers, updates)
 
 EXTERNAL = [("nmap", nmap_scan.run), ("ssh_audit", ssh_audit.run)]
 
@@ -30,6 +30,8 @@ INTERNAL = [
     ("cve", cve_scan.run),
     ("platform", platform.run),
     ("lynis", lynis_scan.run),
+    ("chkrootkit", rootkit.run_chkrootkit),
+    ("rkhunter", rootkit.run_rkhunter),
     ("clamav", clamav_scan.run),
 ]
 

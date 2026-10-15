@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from html import escape
 
-from . import risk
+from . import cve, risk
 from .models import SEVERITIES, clean_text
 
 LEVEL_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
@@ -136,8 +136,8 @@ def _cve(rep) -> str:
         kev = ", ".join(v["cve"] for v in vs if v.get("kev")) or "—"
         rows.append(f"<tr><td><code>{_e(pkg)}</code></td><td>{len(vs)}</td><td>{escape(worst)}</td>"
                     f"<td>{_e(kev)}</td><td><code>{_e(vs[0]['installed'])}</code> → <code>{_e(vs[0]['available'])}</code></td></tr>")
-    return ("<h2>CVEs fixable now, by package</h2><div class=\"card scroll\"><p class=\"muted\">Source: Grype "
-            f"({_e(sc['data'].get('grype_db') or 'version not detected')}), only CVEs whose update is already installable "
+    return ("<h2>CVEs fixable now, by package</h2><div class=\"card scroll\"><p class=\"muted\">Sources: "
+            f"{_e(cve.sources_text(sc['data']))}. Only CVEs whose update is already installable "
             "on the target. KEV = actively exploited (CISA catalogue).</p><table><tr><th>Package</th><th>CVEs</th>"
             "<th>Most severe</th><th>KEV</th><th>Installed → available</th></tr>" + "".join(rows) + "</table></div>")
 

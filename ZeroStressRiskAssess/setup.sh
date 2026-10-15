@@ -5,7 +5,7 @@
 #   ./setup.sh            Python environment (.venv), dependencies, Lynis in vendor/lynis, external tool check
 #   ./setup.sh --check    external tool check only
 #
-# Nothing is installed system-wide: for nmap, ssh-audit, Grype and Docker the required command is printed.
+# Nothing is installed system-wide: for nmap, ssh-audit, Grype, Trivy and Docker the required command is printed.
 
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -23,6 +23,12 @@ check_tools() {
   command -v ssh-audit >/dev/null && ok "ssh-audit" || miss "ssh-audit       -> sudo apt install ssh-audit   (or: pipx install ssh-audit)"
   command -v grype >/dev/null && ok "grype $(grype version 2>/dev/null | awk '/^Version/ {print $2}')" \
     || miss "grype (CVE)     -> curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin"
+  if command -v trivy >/dev/null; then
+    tv=$(trivy --version 2>/dev/null | awk '/^Version/ {print $2; exit}')
+    # v0.69.4 is the malicious release of the March 2026 supply-chain attack (CVE-2026-33634).
+    if [ "$tv" = "0.69.4" ]; then miss "trivy 0.69.4 is the COMPROMISED release (CVE-2026-33634): remove it (see README)"
+    else ok "trivy $tv"; fi
+  else miss "trivy (CVE, optional second source) -> see README, Requirements (Aqua's signed APT repository)"; fi
   command -v git >/dev/null && ok "git" || miss "git             -> sudo apt install git"
   if command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then ok "docker + compose (lab only)"
   else miss "docker (lab only) -> https://docs.docker.com/engine/install/ubuntu/"; fi
@@ -47,7 +53,7 @@ check_tools
 echo
 if [ "$MISSING" = 1 ]; then
   echo "Install what is missing (commands above), then: ./setup.sh --check"
-  echo "nmap, ssh-audit and Grype are optional: without them those checks are skipped and the report says so."
+  echo "nmap, ssh-audit, Grype and Trivy are optional: without them those checks are skipped and the report says so."
 else
   echo "All set. Activate the environment:  source .venv/bin/activate   then:  zsra --help"
 fi

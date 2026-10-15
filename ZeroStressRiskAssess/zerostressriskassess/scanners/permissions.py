@@ -53,7 +53,7 @@ KNOWN_SUID = {"passwd", "su", "sudo", "sudoedit", "mount", "umount", "chsh", "ch
               "crontab", "wall", "write", "bsd-write", "plocate", "mlocate", "locate", "mount.nfs", "mount.cifs",
               "newuidmap", "newgidmap", "dotlockfile", "pam_timestamp_check", "unix_update", "snap-confine",
               "utempter", "traceroute6.iputils", "Xorg.wrap", "ntfs-3g", "umount.nfs", "ssh-agent",
-              "pam_extrausers_chkpwd", "userhelper",
+              "pam_extrausers_chkpwd",
               "auth_pam_tool"}   # PAM helper of the mariadb-server package
 STD_PREFIXES = ("/usr/", "/bin/", "/sbin/", "/lib/", "/lib64/", "/opt/")
 BAD_PREFIXES = ("/tmp/", "/var/tmp/", "/dev/", "/home/", "/run/", "/var/www/")
@@ -93,7 +93,7 @@ def _check_caps(ctx, res):
     rem = ctx.rem
     if rem.run("command -v getcap").rc != 0:
         res.add("info", "getcap not available: file capabilities not checked",
-                "Package libcap2-bin (Debian/Ubuntu) or libcap (RHEL).")
+                "Package libcap2-bin (sudo apt install libcap2-bin).")
         return
     out = rem.run(f"for m in {MOUNTS}; do nice -n 19 ionice -c3 find \"$m\" -xdev {PRUNE} -type f -perm /111 "
                   "-print0 2>/dev/null | xargs -0 -r getcap 2>/dev/null; done | head -200",
@@ -128,7 +128,7 @@ def _check_caps(ctx, res):
     if known:
         res.add("info", f"Capabilities on known system programs installed by packages ({len(known)})",
                 ", ".join(known[:15]) + ". Required for them to work; each one matches its "
-                "package checksum (dpkg -V / rpm -V).")
+                "package checksum (dpkg -V).")
 
 
 def _is_shell_copy(ctx, path: str) -> bool:

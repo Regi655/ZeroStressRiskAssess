@@ -18,7 +18,7 @@ import os
 from dataclasses import asdict
 from pathlib import Path
 
-from . import risk
+from . import cve, risk
 from .correlate import analyze
 from .models import SEVERITIES, clean_text
 from .redact import mask_report
@@ -189,7 +189,7 @@ def _cve_md(sc: dict) -> list:
         rows.append([_md(pkg), str(len(vs)), worst, _md(", ".join(kev)) or "—",
                      _md(f"{vs[0]['installed']} -> {vs[0]['available']}")])
     L = ["## CVEs fixable now, by package", "",
-         f"Source: Grype ({_md(sc['data'].get('grype_db') or 'version not detected')}), verified that the fixed "
+         f"Sources: {_md(cve.sources_text(sc['data']))}. Verified that the fixed "
          "version is ACTUALLY installable on the target. KEV = actively exploited (CISA catalogue).", ""]
     L += _table(["Package", "CVEs", "Most severe", "KEV", "Installed -> available"], rows)
     if len(by) > 30:

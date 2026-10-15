@@ -25,12 +25,20 @@ from .osinfo import OSInfo
 from .pkgmgr import Apt
 from .validate import split_pkgs
 
-# The only tool installed on the target: ClamAV (antivirus), installed and then removed.
+# Tools installed on the target with apt and removed at the end: ClamAV (antivirus) and chkrootkit (rootkits).
 # Lynis is PORTABLE instead (copied and deleted, see portable.py): no package involved.
-TOOLS = {"clamav": {"apt": ["clamav"], "bin": "clamscan"}}
-TOOL_SCAN = {"clamav": "clamav"}
-HELPER_PKGS: set = set()
-DETECT_ONLY: dict = {}
+# binutils provides `strings`, without which chkrootkit stops immediately ("can't find strings"). Normal
+# systems already have it (then it is neither installed nor removed); minimal containers do not.
+TOOLS = {"clamav": {"apt": ["clamav"], "bin": "clamscan"},
+         "chkrootkit": {"apt": ["chkrootkit", "binutils"], "bin": "chkrootkit"}}
+# Which check uses which tool: if the check is skipped (--skip) the tool is not installed.
+TOOL_SCAN = {"clamav": "clamav", "chkrootkit": "chkrootkit"}
+# SUPPORT packages (needed by a tool, not the tool itself): installed only if missing and never upgraded.
+# Upgrading binutils on a server would be an unnecessary change.
+HELPER_PKGS = {"binutils"}
+# Tools that are NEVER installed but are used if the target already has them (name -> binary).
+# rkhunter: a baseline created now, on a system that may already be compromised, would be worthless.
+DETECT_ONLY = {"rkhunter": "rkhunter"}
 
 MANIFEST_DIR = "/var/lib/zerostressriskassess"
 MANIFEST = MANIFEST_DIR + "/manifest.json"
@@ -82,7 +90,6 @@ class ToolManager:
 
     # ------------------------------------------------------------------ preparation
     def prepare(self):
-        key = self.osinfo.family_key
 
         # An existing manifest means a previous run was interrupted. Proceeding would make its packages
         # look "already present before us" and they would never be removed: stop and let the operator
@@ -115,7 +122,7 @@ class ToolManager:
                 self._note(tool=tool, package="-", action=f"portable from the controller (version {self.portable[tool]}): "
                            "no package installed, temporary directory deleted after the scan")
                 continue
-            for pkg in spec[key]:
+            for pkg in spec["apt"]:
                 inst, cand, upg = self.pm.status(pkg)
                 if pkg in HELPER_PKGS and inst is not None:
                     continue  # already present: left untouched and not recorded

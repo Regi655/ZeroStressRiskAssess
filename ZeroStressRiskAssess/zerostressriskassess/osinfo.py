@@ -18,15 +18,10 @@ class OSInfo:
     id: str
     version_id: str
     pretty: str
-    pkg_mgr: str   # "apt" | "dnf" | "yum"
+    pkg_mgr: str   # always "apt": only Ubuntu/Debian targets are accepted
     kernel: str
     arch: str
     container: bool = False
-
-    @property
-    def family_key(self) -> str:
-        """Key for the package table: 'apt' or 'dnf' (yum uses the same names)."""
-        return "apt" if self.pkg_mgr == "apt" else "dnf"
 
 
 def detect(rem) -> OSInfo:
