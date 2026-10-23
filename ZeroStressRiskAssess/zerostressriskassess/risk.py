@@ -45,6 +45,7 @@ VECTOR = {
     "compromise": "indicator of a compromise that has already happened",
     "admin": "only by someone who is already an administrator",
     "known": "public vulnerabilities already fixed by the vendor: ready-made exploits exist for many of them",
+    "availability": "failure or exhaustion measured on the machine: it happens without an attacker",
 }
 SERVICE_PORTS = {"ssh": None, "ftp": 21, "mysql": 3306, "dns": 53, "docker": 2375, "smb": 445}
 
@@ -146,12 +147,18 @@ RULES = [
      "Legitimate package update: refresh the baseline with rkhunter --propupd, only if the system is known clean."),
     ("rkhunter", r"rootkit detected", 5, 5, "compromise", None,
      "Isolate the machine and investigate the files rkhunter reports; reinstall from trusted media if confirmed."),
-    ("rkhunter", r"differs from both", 5, 4, "compromise", None,
+    ("rkhunter", r"UID 0 added", 5, 4, "compromise", None,
+     "Lock the account (usermod -L) and find out who created it (journalctl, /var/log/auth.log); treat as an incident."),
+    ("rkhunter", r"differs from both|differs from package", 5, 4, "compromise", None,
      "Compare the file with the package (dpkg -V) and reinstall it (apt install --reinstall); investigate how it changed."),
     ("rkhunter", r"without a baseline", 2, 2, "admin", None,
      "Create the baseline (rkhunter --propupd) only while the system is in a known clean state."),
     ("rkhunter", r"PKGMGR", 1, 2, "admin", None, "Set PKGMGR=DPKG in /etc/rkhunter.conf."),
-    ("rkhunter", r".", 3, 2, "local", None,
+    ("rkhunter", r"with a login shell", 3, 2, "local", None,
+     "Verify who created the account; if it is not needed, remove it (userdel) or lock it (usermod -L)."),
+    # Generic warnings that no check above could explain: 2x2. On the laptop most of them were normal desktop
+    # files and accounts (see classify_rkhunter): 3x2 put a dozen false positives at MEDIUM.
+    ("rkhunter", r".", 2, 2, "local", None,
      "Verify the warning by hand (see /var/log/rkhunter.log): rkhunter reports many false positives."),
     ("clamav", r"EICAR", 1, 1, "admin", None,
      'No action: it is the antivirus test file. Remove it when no longer needed.'),
@@ -191,6 +198,8 @@ RULES = [
      "root from localhost only: DROP USER 'root'@'%' and a dedicated administrative account."),
     ("mysql", r"ANY host", 3, 3, "network", "mysql",
      "Restrict the account host to the application servers' addresses."),
+    ("mysql", r"exposure not verified \(local mode\)", 3, 3, "network", "mysql",
+     'bind-address = 127.0.0.1 if only local programs use it; otherwise a firewall allowing only the application servers.'),
     ("mysql", r"reachable from the controller", 3, 4, "network", "mysql",
      'bind-address = 127.0.0.1 (or an internal address) and a firewall allowing only the application servers.'),
     ("mysql", r"password .*readable", 5, 3, "local", None,
@@ -245,6 +254,30 @@ RULES = [
      'sudo apt update && sudo apt upgrade (not urgent: they fix bugs, not vulnerabilities).'),
     ("updates", r"[Aa]utomatic|held back|still running", 2, 2, "local", None,
      'sudo apt install unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades.'),
+    # --- availability: resources and disks (the likelihood is measured, not estimated: the value is there now)
+    ("resources", r"above the critical limit|from the critical limit", 4, 4, "availability", None,
+     "Find the cause (dust, fans, thermal paste, load) and cool the machine: above the critical limit the "
+     "component throttles, shuts down or is damaged."),
+    ("resources", r"Temperature", 2, 3, "availability", None,
+     "Check cooling and airflow; compare with the load (a hot idle machine is a hardware problem)."),
+    ("resources", r"Constant CPU usage", 3, 3, "availability", None,
+     "Identify the process (ps -eo pid,user,%cpu,comm --sort=-%cpu): a constant load nobody explains may be a "
+     "cryptominer; if it is legitimate, size the machine for it."),
+    ("resources", r"Disk space used .*very high", 3, 4, "availability", None,
+     "Free space (journalctl --vacuum-time=30d, apt clean, old backups) or enlarge the filesystem; add monitoring."),
+    ("resources", r"Disk space used|High load|RAM usage|Swap usage", 2, 3, "availability", None,
+     "Identify what consumes the resource (du -xh --max-depth=1, ps, free -h) and reduce it or add capacity."),
+    ("disks", r"SMART reports problems|disk failing|Degraded RAID", 5, 5, "availability", None,
+     "Back up the data NOW, then replace the disk (RAID: replace the failed member and let the array rebuild)."),
+    ("disks", r"pre-failure|pending|[Uu]ncorrectable|integrity errors|Critical Warning|I/O or filesystem errors|"
+              r"device errors|remounted read-only", 4, 4, "availability", None,
+     "Back up the data and plan the disk replacement; read the kernel log (dmesg) and check the cables."),
+    ("disks", r"Inodes almost exhausted", 3, 4, "availability", None,
+     "Find the directories with many small files (du --inodes -x / | sort -n | tail) and clean them up."),
+    ("disks", r"reallocated|errors recorded|worn out|not clean|fstab mounts it read-write", 3, 3, "availability", None,
+     "Watch the disk (smartctl -a) and plan its replacement; filesystem errors: fsck at the next boot, never on "
+     "a mounted filesystem."),
+    ("disks", r"CRC errors", 2, 2, "availability", None, "Reseat or replace the SATA cable."),
     ("lynis", r".", 2, 2, "local", None, "See the Lynis ID given in the finding (cisofy.com/lynis/controls/ID)."),
 ]
 RULES = [(s, re.compile(rx), i, p, v, svc, fx) for s, rx, i, p, v, svc, *fxl in RULES if i
@@ -336,15 +369,48 @@ SEV_IMPACT = {"critical": 5, "high": 4, "medium": 3, "low": 2}
 def _patch(ctx: dict):
     """Security updates / fixable CVEs. Impact = most severe CVE; likelihood 5 if a CVE is actively
     exploited (CISA KEV), 4 if a severe network-exploitable one exists (CVSS AV:N), 3 otherwise.
+    Impact at least 4 while some security updates are not covered by any known CVE.
     """
     cves = ctx.get("cve_now") or []
     if not cves:
         return 4, 3, "known", None
     imp = max(SEV_IMPACT.get(c["severity"], 2) for c in cves)
+    # Security updates whose package has no CVE in the scanners' databases keep the rating used when no CVE is
+    # known (impact 4): otherwise one medium CVE found for one package would LOWER the rating of all the others.
+    if set(ctx.get("security_named") or ()) - {c.get("pkg") for c in cves}:
+        imp = max(imp, 4)
     if any(c.get("kev") for c in cves):
         return imp, 5, "compromise_kev", None
     net = any("AV:N" in "".join(c.get("cvss") or []) and c["severity"] in ("critical", "high") for c in cves)
     return imp, 4 if net else 3, "cve", None
+
+
+# The remediation texts in RULES use the Debian/Ubuntu commands. On the RHEL family the same advice is given with
+# the equivalent commands, so the report never tells a Rocky administrator to run apt.
+RHEL_COMMANDS = [
+    ("sudo apt update && sudo apt upgrade", "sudo dnf upgrade"),
+    ("sudo apt install unattended-upgrades && sudo dpkg-reconfigure -plow unattended-upgrades",
+     "sudo dnf install dnf-automatic && sudo systemctl enable --now dnf-automatic-install.timer"),
+    ("apt install --reinstall", "dnf reinstall"),
+    ("dpkg -V", "rpm -V"),
+    ("PKGMGR=DPKG", "PKGMGR=RPM"),
+    # The RHEL family's firewall is firewalld, not ufw (seen in the Rocky 9 lab report of 2026-10-22: "ufw default
+    # deny incoming" proposed on Rocky). The default zone already allows few services: firewall-cmd --list-all.
+    ("a firewall (ufw default deny incoming; ufw allow ssh)",
+     "firewalld (sudo systemctl enable --now firewalld; check the zone with firewall-cmd --list-all and remove what "
+     "is not needed with firewall-cmd --permanent --remove-service=NAME, then --reload)"),
+    ("Enable ufw: ufw default deny incoming, ufw allow OpenSSH, ufw enable.",
+     "Enable firewalld: sudo systemctl enable --now firewalld, then check the zone with firewall-cmd --list-all."),
+    ("apt clean", "dnf clean all"),
+]
+
+
+def localise_fix(text: str, family: str) -> str:
+    """Remediation text with the commands of the target's family. Pure function."""
+    if family == "rhel":
+        for deb, rhel in RHEL_COMMANDS:
+            text = text.replace(deb, rhel)
+    return text
 
 
 def assess(scans: list, issues: list, ctx: dict) -> list:
@@ -384,6 +450,8 @@ def assess(scans: list, issues: list, ctx: dict) -> list:
             delta = 0
         p = max(1, min(5, p + delta))
         r = i * p
+        if issue.get("fix"):
+            issue = {**issue, "fix": localise_fix(issue["fix"], ctx.get("family", "debian"))}
         out.append({**issue, "impact": i, "probability": p, "risk": r, "level": level(r),
                     "impact_why": IMPACT[i][1], "probability_why": why,
                     "estimated": not rule})

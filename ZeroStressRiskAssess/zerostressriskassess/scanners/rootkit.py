@@ -14,6 +14,7 @@ reported as "INFECTED" that is identical to the official package is a known fals
 from __future__ import annotations
 
 import re
+import shlex
 
 from ..models import ScanResult, mark_timeout
 from ..pkgowner import verify_file
@@ -246,7 +247,8 @@ def run_rkhunter(ctx) -> ScanResult:
                  "/etc/rkhunter.d/*.conf 2>/dev/null | tail -1", sudo=True).out.strip()
     if not pk or pk.split("=")[-1].strip().upper() in ("", "NONE"):
         res.add("low", "rkhunter does not use the package manager as reference (PKGMGR)",
-                "Recommended PKGMGR=DPKG: files are compared with the distribution checksums, independently of the "
+                f"Recommended PKGMGR={'RPM' if ctx.osinfo.pkg_mgr != 'apt' else 'DPKG'}: files are compared with "
+                "the distribution checksums, independently of the "
                 "local baseline.")
 
     # Update the signature databases; if it fails (no network) the existing ones are used.
@@ -277,10 +279,49 @@ def parse_rkhunter(text: str) -> list:
     return blocks
 
 
+# Hidden files that systemd itself writes in /etc (rkhunter flags every hidden file there).
+KNOWN_HIDDEN = {
+    "/etc/.updated": "written by systemd-update-done.service after /usr is updated (man systemd-update-done)",
+    "/etc/.resolv.conf.systemd-resolved.bak": "backup of /etc/resolv.conf made when systemd-resolved took it over",
+}
+NOT_IN_DAT_RE = re.compile(r"The file '(/[^']+)' exists on the system, but it is not present in the 'rkhunter\.dat' file")
+SCRIPT_RE = re.compile(r"The command '(/[^']+)' has been replaced by a script")
+ACCOUNT_RE = re.compile(r"Warning: (User|Group) '([^']+)' has been (added to|removed from) the")
+HIDDEN_RE = re.compile(r"Hidden (?:file|directory) found: (/[^:]+)")
+NOLOGIN = ("/usr/sbin/nologin", "/sbin/nologin", "/bin/false", "/usr/bin/false")
+
+
+def _resolve(ctx, path):
+    """Real file behind a symlink (/usr/bin/mail -> /etc/alternatives/mail -> /usr/bin/bsd-mailx): the alternatives
+    link belongs to no package, the file it points to does."""
+    r = ctx.rem.run(f"readlink -f {shlex.quote(path)}")
+    return r.out.strip() if r.rc == 0 and r.out.strip().startswith("/") else path
+
+
+def _shells(ctx, names):
+    """{user: (uid, shell)} for the users rkhunter reports as added."""
+    names = [n for n in names if re.fullmatch(r"[A-Za-z0-9._-]{1,64}", n)]
+    if not names:
+        return {}
+    out = {}
+    for line in ctx.rem.run("getent passwd " + " ".join(names)).out.splitlines():
+        p = line.split(":")
+        if len(p) >= 7 and p[0] in names:
+            out[p[0]] = (p[2], p[6])
+    return out
+
+
 def classify_rkhunter(ctx, blocks) -> list:
+    """rkhunter warnings -> findings. rkhunter warns about anything that differs from what it expects; most of it
+    on a desktop is normal (second laptop run, 2026-10-22: 13 of 16 warnings were explainable). Each kind of
+    warning is checked against the system before it is rated: files against their package (dpkg -V / rpm -V),
+    new accounts against their login shell, /dev and hidden files against what is known to create them."""
     out = []
     # Users and groups created by the packages the tool installed (e.g. 'clamav'): rkhunter sees them as "new".
     by_tool = {p.split("-")[0] for p in ctx.cache.get("tool_installed", ())}
+    added = [m.group(2) for b in blocks for m in [ACCOUNT_RE.match(b[0])] if m and m.group(1) == "User"
+             and m.group(3) == "added to"]
+    shells = _shells(ctx, added)
     for b in blocks:
         head, rest = b[0], b[1:]
         low = head.lower()
@@ -306,5 +347,75 @@ def classify_rkhunter(ctx, blocks) -> list:
             out.append(("info", f"rkhunter: {m.group(1).lower()} '{m.group(2)}' added by the tool itself",
                         "Created by temporarily installing the scanning tools (removed with them)."))
             continue
+        m = ACCOUNT_RE.match(head)
+        if m:
+            kind, name, what = m.group(1).lower(), m.group(2), m.group(3)
+            once = ("rkhunter compares passwd/group with its own copy, refreshed at every run: the warning appears "
+                    "once. The accounts check rates the accounts themselves.")
+            if what == "removed from":
+                out.append(("info", f"rkhunter: {kind} '{name}' removed since the last rkhunter run",
+                            "Removing a package removes its account (e.g. clamav). " + once))
+            elif kind == "group":
+                out.append(("info", f"rkhunter: group '{name}' added since the last rkhunter run", once))
+            else:
+                uid, shell = shells.get(name, ("?", ""))
+                if uid == "0":
+                    out.append(("critical", f"rkhunter: account '{name}' with UID 0 added since the last rkhunter run",
+                                "A second root account: verify immediately who created it."))
+                elif shell and shell not in NOLOGIN:
+                    out.append(("medium", f"rkhunter: account '{name}' added since the last rkhunter run, with a "
+                                f"login shell ({shell})", "Verify that the account was created by an administrator."))
+                else:
+                    out.append(("info", f"rkhunter: account '{name}' added since the last rkhunter run, without a "
+                                "login shell (service account)", f"UID {uid}, shell {shell or '?'}. " + once))
+            continue
+        m = NOT_IN_DAT_RE.search(head) or SCRIPT_RE.search(head)
+        if m:
+            path = m.group(1)
+            real = _resolve(ctx, path)
+            pkg, ok = verify_file(ctx, real)
+            via = f" ({path} -> {real})" if real != path else ""
+            script = bool(SCRIPT_RE.search(head))
+            if ok:
+                what = "is a script" if script else "not in the baseline"
+                out.append(("low", f"rkhunter: {path} {what}, but identical to package {pkg}",
+                            ("Some commands are scripts by design (lwp-request is a Perl script of libwww-perl): "
+                             "rkhunter only expects a binary." if script else
+                             "Installed after the rkhunter baseline was created.") + via))
+            elif ok is False:
+                out.append(("high", f"rkhunter: {path} differs from package {pkg}",
+                            "The file does not match the official version: possible replacement." + via))
+            else:
+                out.append(("medium", "rkhunter: " + head.replace("Warning: ", "", 1)[:200],
+                            "Belongs to no package: verify where it comes from." + via))
+            continue
+        if "'permitrootlogin' has not been set" in low:
+            eff = ctx.rem.run("sshd -T 2>/dev/null | grep -i '^permitrootlogin'", sudo=True).out.strip()
+            out.append(("info", "rkhunter: PermitRootLogin not written in sshd_config (the sshd check reads the "
+                        "effective value)", (f"Effective: {eff}. " if eff else "") + "Since OpenSSH 7.0 the default "
+                        "is prohibit-password, not yes; a dangerous value is reported by the sshd check."))
+            continue
+        if low.startswith("warning: suspicious file types found in /dev"):
+            files = [x.split(":")[0] for x in rest]
+            shm = [f for f in files if f.startswith("/dev/shm/")]
+            other = [f for f in files if f not in shm]
+            if shm:
+                out.append(("info", f"rkhunter: {len(shm)} shared-memory files in /dev/shm (normal)",
+                            "Programs exchange data through /dev/shm (PulseAudio, browsers, Electron apps); rkhunter "
+                            "flags every file in /dev that is not a device. Examples: " + ", ".join(shm[:5])))
+            if other or not files:
+                out.append(("medium", "rkhunter: suspicious file types in /dev",
+                            "Not devices and not shared memory: verify. " + (", ".join(other[:10]) or detail)))
+            continue
+        m = HIDDEN_RE.search(head)
+        if m:
+            path = m.group(1).strip()
+            if path in KNOWN_HIDDEN:
+                out.append(("info", f"rkhunter: hidden file {path} (normal)", KNOWN_HIDDEN[path].capitalize() + "."))
+                continue
+            pkg, ok = verify_file(ctx, path)
+            if ok:
+                out.append(("low", f"rkhunter: hidden file {path}, but identical to package {pkg}", detail))
+                continue
         out.append(("medium", "rkhunter: " + head.replace("Warning: ", "", 1)[:200], " | ".join(rest)))
     return out

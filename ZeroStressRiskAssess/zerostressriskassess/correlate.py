@@ -111,6 +111,7 @@ FIX = {
     "port:2375": "Remove -H tcp:// (or use --tlsverify with client certificates); use the local socket.",
     "ssh-algos": "Remove the listed algorithms from Ciphers/MACs/KexAlgorithms/HostKeyAlgorithms and verify "
                  "with sshd -T and ssh-audit.",
+    # Debian/Ubuntu command: risk.localise_fix() turns it into the dnf equivalent on the RHEL family.
     "patch": "Install the available updates (sudo apt update && sudo apt upgrade) and restart the services or "
              "the machine if needed.",
     "lynis-tips": "Configuration improvements, not urgent problems: the list with the Lynis IDs is in the "

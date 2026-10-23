@@ -6,8 +6,8 @@ that if one is deceived the others can still detect the anomaly:
 
  1. Do the binaries belong to a distribution package? An `ls` owned by no package (e.g. in
     /usr/local/bin) is suspicious.
- 2. Does the file hash match the package checksum? (`dpkg -V` compares the file on disk with the
-    checksums recorded by the package.)
+ 2. Does the file hash match the package checksum? (`dpkg -V` / `rpm -V` compare the file on disk
+    with the checksums recorded by the package.)
  3. Hidden PIDs: the process list in /proc (kernel) is compared with what `ps` shows. A PID present in
     /proc but missing from `ps` suggests a tampered `ps` (or a kernel rootkit).
  4. Processes whose executable lives in /tmp, /dev/shm or /var/tmp, or has been deleted from disk:
@@ -49,7 +49,11 @@ for c in @CMDS@; do
   done
   pkg=""
   for q in "$r" "$p" $alts; do
-    if out=$(dpkg -S "$q" 2>/dev/null); then pkg=$(echo "$out" | head -1 | cut -d: -f1); fi
+    if command -v dpkg >/dev/null 2>&1; then
+      if out=$(dpkg -S "$q" 2>/dev/null); then pkg=$(echo "$out" | head -1 | cut -d: -f1); fi
+    elif command -v rpm >/dev/null 2>&1; then
+      if out=$(rpm -qf "$q" 2>/dev/null); then pkg=$(echo "$out" | head -1); fi
+    fi
     [ -n "$pkg" ] && break
   done
   echo "CMD|$c|$p|$r|$meta|$pkg"
@@ -68,6 +72,7 @@ TMP_RE = re.compile(r"^/(tmp|dev/shm|var/tmp)/")
 
 def run(ctx) -> ScanResult:
     res, rem = ScanResult("integrity"), ctx.rem
+    deb = ctx.osinfo.pkg_mgr == "apt"
 
     # ---- 1) ownership and permissions of the binaries
     script = SCRIPT.replace("@CMDS@", " ".join(COMMANDS)).replace("@TRUSTED@", TRUSTED_PATH)
@@ -106,14 +111,14 @@ def run(ctx) -> ScanResult:
     pkgs, bad_pkgs = split_pkgs({i["pkg"] for i in infos if i["pkg"]})
     for b in bad_pkgs:  # an implausible package name is suspicious in itself
         res.add("high", "Anomalous package name returned by the target", b[:80])
-    # dpkg -V prints the path as recorded by the package (/bin/ls): all forms are tracked,
+    # dpkg/rpm -V print the path as recorded by the package (/bin/ls): all forms are tracked,
     # otherwise a modified binary could go unnoticed.
     watched = set()
     for i in infos:
         watched.update(path_variants(i["path"]))
         watched.update(path_variants(i["real"]))
     if pkgs:
-        v = rem.run("dpkg -V " + " ".join(shlex.quote(p) for p in pkgs), sudo=True, timeout=900).out
+        v = rem.run(("dpkg -V " if deb else "rpm -V ") + " ".join(shlex.quote(p) for p in pkgs), sudo=True, timeout=900).out
         for line in v.splitlines():
             tok = line.split()
             if len(tok) < 2 or tok[-1] not in watched:

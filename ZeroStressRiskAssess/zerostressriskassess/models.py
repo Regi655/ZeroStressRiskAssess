@@ -61,12 +61,15 @@ class Options:
     clamav_full: bool = False   # False = critical directories only, True = whole filesystem
     clamav_quick: bool = False  # True = only the usual malware locations on servers (no /home)
     keep_tools: bool = False    # True = do NOT uninstall (debugging only)
+    no_install: bool = False    # True = install NOTHING on the target: ClamAV, chkrootkit, smartmontools only if present
     skip: set = field(default_factory=set)
     scan_timeout: int = 3600    # maximum seconds per check
     nse: bool = True            # nmap "safe" NSE scripts (ftp-anon, http-git, ssl-cert...)
     nse_tls: bool = False       # also ssl-enum-ciphers ("intrusive" category: dozens of TLS connections)
     lynis_dir: str = ""         # LOCAL Lynis directory: copied to the target and run without installing anything
     local: bool = False         # True = assess the machine itself (no SSH connection)
+    recon_only: bool = False    # True = external checks only: no login, nothing run or written on the target
+    dns_zones: list = field(default_factory=list)  # zones to test for zone transfer (AXFR) from the controller
 
 
 @dataclass

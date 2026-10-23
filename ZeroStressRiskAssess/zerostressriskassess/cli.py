@@ -14,9 +14,9 @@ from pathlib import Path
 
 from . import __version__, banner
 from .models import Options
-from .orchestrator import assess, recover
+from .orchestrator import assess, recon, recover
 from .scanners import ALL_NAMES
-from .ssh_client import Local, Remote
+from .ssh_client import Local, NoLogin, Remote
 from .validate import valid_host, valid_ports
 
 DEFAULT_LYNIS = str(Path(__file__).resolve().parent.parent / "vendor" / "lynis")
@@ -25,9 +25,14 @@ DEFAULT_LYNIS = str(Path(__file__).resolve().parent.parent / "vendor" / "lynis")
 def build_parser():
     ap = argparse.ArgumentParser(prog="zsra",
                                  epilog="Without arguments, zsra opens its interactive console.",
-                                 description="Risk assessment of an Ubuntu machine: risk = impact × likelihood")
+                                 description="Risk assessment of a Linux machine (Ubuntu/Debian, RHEL family): "
+                                             "risk = impact × likelihood")
     ap.add_argument("host", nargs="?", help="target IP or hostname (omitted with --local)")
     ap.add_argument("--local", action="store_true", help="assess the machine running the command (no SSH)")
+    ap.add_argument("--recon-only", action="store_true",
+                    help="external reconnaissance only: no login, nothing run or written on the target")
+    ap.add_argument("--dns-zone", nargs="+", default=[], metavar="ZONE",
+                    help="DNS zones to test for zone transfer (AXFR) from this machine")
     ap.add_argument("-u", "--user", help="SSH user (root, or a sudo user)")
     ap.add_argument("-p", "--port", type=int, default=22, help="SSH port (default 22)")
     ap.add_argument("-i", "--key", help="SSH private key")
@@ -42,6 +47,7 @@ def build_parser():
     ap.add_argument("--lynis-dir", default=DEFAULT_LYNIS, metavar="DIR",
                     help=f"Lynis copy to bring to the target (default {DEFAULT_LYNIS})")
     ap.add_argument("--nmap-ports", default="", help="nmap ports: '1-1024,8080'; '-' = all; empty = top 1000")
+    ap.add_argument("--no-nse", action="store_true", help="nmap without NSE scripts (ports and versions only)")
     ap.add_argument("--nse-tls", action="store_true", help="also run ssl-enum-ciphers (TLS protocols and ciphers)")
     cl = ap.add_mutually_exclusive_group()
     cl.add_argument("--clamav-quick", action="store_true", help="ClamAV on typical malware locations only (fast)")
@@ -51,6 +57,8 @@ def build_parser():
     ap.add_argument("--scan-timeout", type=int, default=60, metavar="MINUTES", help="maximum time per check")
     ap.add_argument("--out-dir", default="./reports", help="report directory (default ./reports)")
     ap.add_argument("--keep-tools", action="store_true", help="do NOT remove ClamAV and chkrootkit at the end (debugging)")
+    ap.add_argument("--no-install", action="store_true",
+                    help="install NOTHING on the target: ClamAV, chkrootkit and smartmontools only if already present")
     ap.add_argument("--recover", action="store_true", help="clean up the target after an interrupted run")
     ap.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     ap.add_argument("--no-banner", action="store_true", help="do not show the startup banner (also: ZSRA_NO_BANNER=1)")
@@ -58,7 +66,8 @@ def build_parser():
     return ap
 
 
-def main(argv=None) -> int:
+def main(argv=None, result=None) -> int:
+    """result: optional dict, filled with {"report": ...} when an assessment completes (used by inventory.py)."""
     if argv is None:
         argv = sys.argv[1:]
     if not argv:
@@ -73,10 +82,19 @@ def main(argv=None) -> int:
         ap.error("specify a host to assess over SSH, OR --local for this machine")
     if args.host and not valid_host(args.host):
         ap.error("invalid host: IP address or name (letters, digits, dots, hyphens)")
-    if args.host and not args.user:
-        ap.error("a host requires -u USER")
+    if args.recon_only and (args.local or args.recover):
+        ap.error("--recon-only works from outside: it cannot be combined with --local or --recover")
+    if args.no_nse and args.nse_tls:
+        ap.error("--no-nse and --nse-tls exclude each other")
+    for z in args.dns_zone:
+        if not valid_host(z.rstrip(".")):
+            ap.error(f"--dns-zone: invalid zone name: {z}")
+    if args.host and not args.user and not args.recon_only:
+        ap.error("a host requires -u USER (or --recon-only for an external assessment without login)")
     if not valid_ports(args.nmap_ports):
         ap.error("invalid --nmap-ports: only digits, commas, hyphens, T: and U: are allowed")
+    if args.no_install and args.keep_tools:
+        ap.error("--no-install and --keep-tools exclude each other (with --no-install nothing is installed)")
     if args.ask_key_pass and not args.key:
         ap.error("--ask-key-pass requires -i/--key")
     # "~" is expanded by the shell, but not inside the zsra console (it splits the line itself, with no shell
@@ -91,6 +109,9 @@ def main(argv=None) -> int:
         ap.error(f"-i/--key: file not readable by the current user: {args.key}")
     if not 5 <= args.scan_timeout <= 600:
         ap.error("--scan-timeout: between 5 and 600 minutes")
+
+    if args.recon_only:
+        return _recon(args, result)
 
     spwd = getpass.getpass("sudo password: ") if args.ask_sudo_pass else None
     if args.sudo_pass_env:
@@ -115,16 +136,19 @@ def main(argv=None) -> int:
         except Exception as exc:
             print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
             return 2
-    if not confirm(f"Assessment of {'this machine' if args.local else args.host}: ClamAV and chkrootkit will be "
-                   "installed and then removed (unless excluded with --skip clamav chkrootkit) and Lynis will be "
-                   "copied temporarily.\n"
+    what = ("nothing will be installed (--no-install); Lynis will be copied temporarily unless --skip lynis"
+            if args.no_install else
+            "ClamAV, chkrootkit and smartmontools will be installed and then removed (unless excluded with --skip) "
+            "and Lynis will be copied temporarily")
+    if not confirm(f"Assessment of {'this machine' if args.local else args.host}: {what}.\n"
                    "Do you have the system owner's authorisation?"):
         print("Aborted.")
         return 1
 
     opts = Options(nmap_ports=args.nmap_ports, clamav_full=args.clamav_full, clamav_quick=args.clamav_quick,
-                   keep_tools=args.keep_tools, skip=set(args.skip), scan_timeout=args.scan_timeout * 60,
-                   nse_tls=args.nse_tls, lynis_dir=args.lynis_dir, local=args.local)
+                   keep_tools=args.keep_tools, no_install=args.no_install, skip=set(args.skip), scan_timeout=args.scan_timeout * 60,
+                   nse=not args.no_nse, nse_tls=args.nse_tls, lynis_dir=args.lynis_dir, local=args.local,
+                   dns_zones=[z.rstrip(".") for z in args.dns_zone])
     try:
         rep = assess(rem, opts, args.out_dir)
     except KeyboardInterrupt:
@@ -133,6 +157,37 @@ def main(argv=None) -> int:
     except Exception as exc:
         print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 2
+    if result is not None:
+        result["report"] = rep
+    print_summary(rep)
+    return 0
+
+
+def _recon(args, result=None) -> int:
+    """--recon-only: no login. The login options are not needed and are ignored (no password is asked)."""
+    unused = [o for o, v in (("-u", args.user), ("-i", args.key), ("--ask-pass", args.ask_pass),
+                             ("--ask-key-pass", args.ask_key_pass), ("--ask-sudo-pass", args.ask_sudo_pass)) if v]
+    if unused:
+        print(f"Note: {', '.join(unused)} not used: --recon-only does not log in.")
+    if not (args.yes or input(f"External reconnaissance of {args.host}: network probes from this machine only (nmap, "
+                              "ssh-audit, DNS and MySQL probes); nothing is installed, run or written on the target, "
+                              "but the probes are still a scan.\nDo you have the system owner's authorisation? "
+                              "[yes/no] ").strip().lower() in ("yes", "y")):
+        print("Aborted.")
+        return 1
+    opts = Options(nmap_ports=args.nmap_ports, skip=set(args.skip), scan_timeout=args.scan_timeout * 60,
+                   nse=not args.no_nse, nse_tls=args.nse_tls, recon_only=True,
+                   dns_zones=[z.rstrip(".") for z in args.dns_zone])
+    try:
+        rep = recon(NoLogin(args.host, args.port), opts, args.out_dir)
+    except KeyboardInterrupt:
+        print("\nInterrupted by the user.")
+        return 130
+    except Exception as exc:
+        print(f"ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
+        return 2
+    if result is not None:
+        result["report"] = rep
     print_summary(rep)
     return 0
 
@@ -152,3 +207,11 @@ def print_summary(rep: dict, top: int = 10):
     print(f"\nReport (open in a browser):  {p.get('html', '-')}")
     print(f"   open it with:  xdg-open '{p.get('html', '')}'")
     print(f"Other formats:  {p['md']}\n                {p['json']}")
+    if p.get("pdf"):
+        print(f"                {p['pdf']}")
+    elif p.get("dir"):
+        print("                (no PDF: ReportLab is not installed; .venv/bin/pip install reportlab, then zsra-pdf DIR)")
+    if p.get("dir"):
+        print("\nThis report is a plaintext DRAFT, on this machine only. After reviewing it, to deliver it:\n"
+              f"   zsra-finalize '{p['dir']}' --recipient RECIPIENT_PUBLIC_KEY --sign-key ~/.ssh/id_ed25519\n"
+              "   (--omit F012 --reason '...' removes a detail too sensitive to circulate)")

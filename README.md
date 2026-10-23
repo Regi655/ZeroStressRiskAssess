@@ -1,10 +1,10 @@
 # ZeroStressRiskAssess
 
-**Automated risk assessment of an Ubuntu Linux machine in a single command, producing a risk table computed as
-`risk = impact × likelihood`.**
+**Automated risk assessment of a Linux machine (Ubuntu/Debian or the RHEL family) in a single command, producing a
+risk table computed as `risk = impact × likelihood`.**
 
 ZeroStressRiskAssess collects information about the machine from several sources (its own checks plus third-party
-tools: nmap, ssh-audit, Lynis, Grype, Trivy, ClamAV, chkrootkit, rkhunter), merges findings that describe the same problem, assigns each problem a
+tools: nmap, ssh-audit, Lynis, Grype, Trivy, ClamAV, chkrootkit, rkhunter, smartmontools), merges findings that describe the same problem, assigns each problem a
 justified **impact** (1–5) and **likelihood** (1–5), and writes a report (HTML to open in a browser, plus Markdown and
 JSON) containing:
 
@@ -15,13 +15,19 @@ JSON) containing:
 - which checks were executed, skipped or failed (a skipped check must never look like a clean one).
 
 The assessment can run **from outside** (from your machine, the *controller*, which first looks at the target from the
-network and then logs in over SSH) or **from inside** (`--local`, on the machine itself).
+network and then logs in over SSH), **from inside** (`--local`, on the machine itself) or **from outside only**
+(`--recon-only`: no login, nothing run or written on the target, for a machine that must not be touched).
 
-![Risk matrix from the lab](ZeroStressRiskAssess/docs/screenshot-matrix.png)
+The report is first a plaintext **draft** kept on the controller; after reviewing it, `zsra-finalize` omits the
+details too sensitive to circulate, encrypts it for the recipient and signs it. `zsra-compare` compares two runs on
+the same machine: what was fixed, what is new, what is still there. `zsra-inventory` assesses a list of machines
+and writes a summary table; every report also comes as a PDF.
+
+![Risk matrix from the lab](docs/screenshot-matrix.png)
 
 *Real report from the Docker lab included in the repository (fake data and credentials). Full example:
-[`ZeroStressRiskAssess/docs/sample-report.html`](ZeroStressRiskAssess/docs/sample-report.html) (download it and open it in a browser) and
-[`ZeroStressRiskAssess/docs/sample-report.md`](ZeroStressRiskAssess/docs/sample-report.md).*
+[`docs/sample-report.html`](docs/sample-report.html) (download it and open it in a browser) and
+[`docs/sample-report.md`](docs/sample-report.md).*
 
 ---
 
@@ -139,7 +145,7 @@ is intended only for automation in authorised contexts).
 11. [CVE verification utilities](#11-cve-verification-utilities)
 12. [Troubleshooting](#12-troubleshooting)
 13. [Repository layout](#13-repository-layout)
-14. [Future work](#14-future-work)
+14. [Coming soon](#14-coming-soon)
 15. [References](#15-references)
 
 ---
@@ -147,27 +153,32 @@ is intended only for automation in authorised contexts).
 ## 1. How it works in brief
 
 ```
- controller (your machine)                             Ubuntu target
+ controller (your machine)                             Linux target
  ─────────────────────────                             ─────────────
  1. nmap + NSE scripts ───── from the network ──────▶  open ports, services, anonymous FTP...
  2. ssh-audit          ───── from the network ──────▶  weak SSH algorithms
  3. SSH connection (paramiko), root/sudo check ─────▶
- 4. installs ClamAV + chkrootkit (apt) ─────────────▶  removed at the end
+ 4. installs ClamAV + chkrootkit + smartmontools ───▶  removed at the end (apt, or dnf + EPEL)
  5. internal checks ────────────────────────────────▶  accounts, sudo, sshd_config, permissions, services,
                                                          firewall, kernel, updates, MySQL, FTP...
  6. portable Lynis: copied to /tmp, executed, deleted; chkrootkit; rkhunter only if already installed
- 7. package inventory ◀────────────────────────────── dpkg-query + apt list --upgradable
+ 7. package inventory ◀────────────────────────────── dpkg-query / rpm + the available updates
     → CycloneDX SBOM → Grype and/or Trivy (on the controller) → CVEs
  8. cleanup (always, even on errors or Ctrl-C)
- 9. correlation → impact × likelihood → reports/<host>_<date>/report.html (+ .md, .json)
+ 9. correlation → impact × likelihood → reports/<host>_<date>/report.html (+ .md, .json): a DRAFT
+10. you review it → zsra-finalize: omissions, age encryption, SSH signature, optional upload of the encrypted file
 ```
+
+Before step 3 the tool recognises the distribution (`/etc/os-release`, `ID` and `ID_LIKE`, then the package
+manager actually present) and refuses families it does not support, saying which one it found (section 2).
 
 Why this order: the network checks run **before** logging in, so the machine is seen as an attacker sees it; the
 likelihood of every network-related problem is then **adjusted according to what nmap actually observed** (a vulnerable
 service on a port closed by the firewall is less likely to be exploited than an exposed one).
 
 With `--local`, steps 1–2 and the SSH connection are skipped: the report states explicitly that network exposure
-**was not verified**.
+**was not verified**. With `--recon-only` only steps 1–2 run, plus DNS and MySQL/MariaDB probes from the controller
+(section 5).
 
 ---
 
@@ -185,6 +196,9 @@ With `--local`, steps 1–2 and the SSH connection are skipped: the report state
 | ssh-audit | recommended | SSH algorithms | `sudo apt install ssh-audit` (or `pipx install ssh-audit`) |
 | Grype | recommended | CVEs of the installed packages; the only source of the KEV flag (actively exploited) | `curl -sSfL https://get.anchore.io/grype \| sudo sh -s -- -b /usr/local/bin` |
 | Trivy | optional | second CVE source: with Grype the results are merged, alone it replaces Grype | Aqua's signed APT repository, see below |
+| ReportLab (Python) | recommended | `report.pdf` | installed by `setup.sh` into `.venv`; without it no PDF, the other formats are unchanged |
+| age | for `zsra-finalize` | encryption of the final report | `sudo apt install age` |
+| ssh-keygen | for `zsra-finalize --sign-key` | signature of the final report | `sudo apt install openssh-client` (normally already there) |
 | Docker + compose plugin | lab only | test machines | <https://docs.docker.com/engine/install/ubuntu/> |
 
 The "recommended" tools are optional: if one is missing, the corresponding check is **skipped** and the report says
@@ -214,15 +228,29 @@ ever ran on your machine, treat the secrets reachable from it (SSH keys, tokens,
 
 | What | Why |
 |---|---|
-| **Ubuntu** (tested on 22.04 and 24.04) or Debian | the checks rely on `apt`/`dpkg`; other distributions are future work |
+| **Debian/Ubuntu** (apt) or the **RHEL family**: RHEL, Rocky, Alma, CentOS Stream, Fedora, Oracle (dnf; yum on releases 7 and earlier) | the package-based checks rely on `apt`/`dpkg` or `dnf`/`rpm` |
 | **running SSH service** (remote mode only) | the tool logs in over SSH |
 | a **root** user, or a user with **sudo** | many files read (shadow, sudoers, configurations) are root-only |
-| `bash`, `tar`, `sha256sum`, `coreutils` | present on any Ubuntu; needed by portable Lynis |
-| Internet access for `apt` (recommended) | to install ClamAV and chkrootkit and update the ClamAV signatures. Without it those checks are skipped and the report says so |
+| `bash`, `tar`, `sha256sum`, `coreutils` | present on any Ubuntu or RHEL-family system; needed by portable Lynis |
+| Internet access for `apt`/`dnf` (recommended) | to install ClamAV, chkrootkit and smartmontools and update the ClamAV signatures. Without it those checks are skipped and the report says so. On the RHEL family ClamAV and chkrootkit come from EPEL: `epel-release` is installed if needed and removed at the end |
 | ~500 MB free in `/var` and `/tmp` | ClamAV and its signatures, temporary Lynis copy |
 
-Nothing has to be installed manually on the target: ZeroStressRiskAssess brings Lynis, installs ClamAV and chkrootkit
-and removes everything at the end. rkhunter is used only if the target already has it (see section 10).
+Nothing has to be installed manually on the target: ZeroStressRiskAssess brings Lynis, installs ClamAV, chkrootkit and
+smartmontools and removes everything at the end. rkhunter is used only if the target already has it (see section 10).
+
+**How the distribution is recognised.** `/etc/os-release` names the distribution (`ID`) and the families it derives
+from (`ID_LIKE`: Ubuntu says `debian`, Rocky says `rhel centos fedora`), so a derivative never seen before still lands
+in the right family; very old systems without it are recognised from `/etc/redhat-release`, `/etc/debian_version` and
+similar. A family counts as supported only if its package manager is actually there. Three outcomes:
+
+| Outcome | What happens |
+|---|---|
+| supported and **tested** release: Ubuntu 22.04, 24.04, 26.04; Rocky 9 | every check runs |
+| supported but **untested** release (e.g. Debian 12, Alma 9, Fedora 40, Kali) | every check runs; the report carries a *Platform notes* row saying the release was not tested end to end |
+| other family: Arch (CachyOS, Manjaro...), SUSE, Alpine, unknown | the assessment stops before installing anything, naming the family and the package managers found, and suggests `--recon-only` |
+
+Remediation commands in the report follow the family: `sudo dnf upgrade`, `dnf-automatic`, `rpm -V` on the RHEL
+family, `apt` and `dpkg -V` on Debian/Ubuntu.
 
 ---
 
@@ -248,6 +276,17 @@ External programs:
   [missing] docker (lab only) -> https://docs.docker.com/engine/install/ubuntu/
   [ok]      Lynis 3.1.8 in vendor/lynis
 ```
+
+**pip and the eMudhra CA incident (October 2026).** The private keys of eight eMudhra/emSign intermediate CAs were
+exposed: with them anyone can impersonate an HTTPS site, PyPI included, to a client that still trusts them. pip
+downloads packages over HTTPS with its own certificate bundle, so pip older than **26.2.2** is the weak point
+exactly while it installs. `setup.sh` therefore installs pip 26.2.2 **by URL and SHA-256** (the hash published in
+the [Python security announcement](https://discuss.python.org/t/information-for-python-users-regarding-emudhra-emsign-ca-certificate-security-incident/109576)):
+a tampered download is refused even if the TLS connection was intercepted (verified: with a wrong hash pip stops
+and `setup.sh` does not continue). Only then are paramiko and ReportLab installed. `./setup.sh --check` also reports
+the pip of `.venv` and the system `ca-certificates` (on Ubuntu the fixed package is `20260816ubuntu0.XX.04.1`,
+[USN-8944-1](https://osv.dev/vulnerability/USN-8944-1)). On a target machine the same `ca-certificates` update
+shows up in the *updates* check like any pending security update.
 
 Install whatever is missing, then:
 
@@ -291,7 +330,7 @@ one of the tool's checks.
 ./lab/lab.sh verify           # assesses ALL profiles and compares them with the expected risk
 ```
 
-Actual result of `./lab/lab.sh verify --skip clamav` (2026-10-14):
+Actual result of `./lab/lab.sh verify --skip clamav` (2026-10-20, with the resources and disks checks):
 
 ```
 Result (counts: C=critical H=high M=medium L=low):
@@ -303,7 +342,7 @@ Result (counts: C=critical H=high M=medium L=low):
 4 of 4 profiles as expected. Reports in reports/lab-PROFILE/.
 ```
 
-![Report of the secure profile: overall risk LOW](ZeroStressRiskAssess/docs/screenshot-secure.png)
+![Report of the secure profile: overall risk LOW](docs/screenshot-secure.png)
 
 *The `secure` profile passes: only two low problems remain (Lynis suggestions and recently modified account files,
 which is normal for a freshly created machine).*
@@ -370,6 +409,10 @@ Console commands:
 zsra > help                                    # list of commands (help COMMAND for details)
 zsra > scan 192.168.1.50 -u admin -i ~/.ssh/id_ed25519          # assess a host over SSH
 zsra > local --skip clamav                     # assess this machine (start zsra with sudo)
+zsra > recon 192.168.1.50 --dns-zone example.lab   # external reconnaissance only, no login
+zsra > finalize reports/192.168.1.50_20261020-160509 --recipient age1... --sign-key ~/.ssh/id_ed25519
+zsra > compare reports/HOST_BEFORE reports/HOST_AFTER   # what was fixed, what is new
+zsra > inventory hosts.txt -- --skip clamav             # several machines, summary table
 zsra > reports                                 # latest reports, newest first, with overall risk
 zsra > open 1                                  # open HTML report number 1 in the browser
 zsra > tools                                   # nmap, ssh-audit, grype, trivy, Lynis: what is present and what is missing
@@ -437,12 +480,135 @@ zsra HOST -u admin -i KEY --nmap-ports -          # all 65535 ports (slower)
 
 ### Interrupted run
 
-If the assessment is interrupted abruptly (lost connection, killed process), ClamAV and chkrootkit may have been left
-installed:
+If the assessment is interrupted abruptly (lost connection, killed process), ClamAV, chkrootkit and smartmontools may
+have been left installed:
 
 ```bash
 zsra HOST -u admin -i KEY --recover
 ```
+
+### External reconnaissance only (`--recon-only`)
+
+For a machine you must not log into: one that may already be compromised and must not be contaminated before a
+forensic analysis, one outside the agreed scope for internal checks, or one of an unsupported distribution.
+
+```bash
+zsra 192.168.1.50 --recon-only                          # no -u, no key, no password
+zsra ns1.lab --recon-only --dns-zone example.lab corp.lab   # also tries the zone transfer of these zones
+```
+
+What runs, all from the controller: nmap with the safe NSE scripts, ssh-audit, DNS probes (open recursion,
+`version.bind`, AXFR of the zones given with `--dns-zone`: from outside the tool cannot know which zones a server
+hosts) and the MySQL/MariaDB greeting (version, TLS offered or not, controller address allowed or refused). Nothing is
+installed, copied, run or written on the target; the only traces are the network connections, which the target's
+logs may record, as for any scan. Verified on the lab: zero files changed on the target, no login in its logs.
+
+The operating system is guessed from the service banners ("OpenSSH 9.6p1 Ubuntu...") and marked as *guessed, not
+verified*. The report carries a **Scope** row in bold: accounts, sudo, configuration, packages, updates, malware and
+rootkits were NOT checked, so a short list of problems does not mean the machine is secure.
+
+### Delivering the report (two phases)
+
+The report `zsra` writes is a **draft**: plaintext, on the controller only (directory 700, files 600), and it says
+so at the top. Read it, then finalise it:
+
+```bash
+zsra-finalize reports/192.168.1.50_20261020-160509 \
+    --recipient "$(cat client-age.pub)" \
+    --sign-key ~/.ssh/id_ed25519 \
+    --omit R05 --omit F023 --reason "exact paths of key and credential files" \
+    --upload --host 192.168.1.50 -u admin -i ~/.ssh/id_ed25519
+```
+
+| Step | Why |
+|---|---|
+| `--omit ID --reason TEXT`: a finding (`F023`) or a whole problem of the table (`R05`) | its detail, the paths and quoted names in its title, and the raw output of its check are removed; the severity and the kind of weakness stay, and the final report lists what was omitted and why (a hidden omission would make the report false) |
+| encryption with **age** for each `--recipient` (an `age1...` key, an SSH public key, or a file of keys) | confidentiality: only the holder of the private key can read it |
+| signature with **`ssh-keygen -Y sign`** (`--sign-key`) | authenticity: age does not say *who* encrypted (anyone with the recipient's public key can), the signature does. It is verified right away: if it does not verify, nothing is delivered |
+| `manifest.json` | hashes of the draft and of the final version; records whether the draft was edited after the run |
+| `--upload` | copies to `~/zsra_reports/` on the target ONLY the encrypted file, its signature, the verification key and `README-recipient.txt`, then checks the hash of the uploaded copy |
+
+If the upload fails (target off, unknown host key), the encrypted file stays ready: repeat with `--upload-only`
+without encrypting and signing again. The recipient verifies and decrypts with the two commands written in
+`README-recipient.txt` (`ssh-keygen -Y verify ...` must print `Good`, then `age -d ... | tar xzf -`).
+
+### Comparing two runs
+
+After the owner has fixed things, the real question is whether the fixes worked:
+
+```bash
+zsra-compare reports/192.168.1.50_20261001-100000 reports/192.168.1.50_20261020-160509 -o comparison.md
+```
+
+The problems of the two risk tables are paired by a fingerprint (the checks that saw the problem + its title, with
+counts and versions normalised: "41 security updates" and "42 security updates" are the same problem; ports,
+accounts and paths are kept, because they are the object). The output lists fixed, new and still present problems
+and the ones whose risk went up or down. A problem can also be **regrouped**: in the lab, once the empty password of
+`guest` was fixed, "SSH accepts empty passwords" became a problem of its own; it was already there as evidence of
+"SSH login without password", and the comparison says so instead of calling it new. It warns when the targets or the
+tool versions differ, or when one of the runs is a reconnaissance only. It also warns when the earlier report is
+given second (dates in reverse order).
+
+### Several machines (inventory)
+
+An inventory is a text file with **one zsra command line per machine**, exactly the arguments of the direct command
+without `zsra` (`#` starts a comment):
+
+```
+# web servers
+192.168.1.50 -u admin -i ~/.ssh/id_ed25519
+192.168.1.51 -u admin --ask-pass --skip clamav
+# a machine that must not be touched: from outside only
+192.168.1.60 --recon-only
+```
+
+```bash
+zsra-inventory hosts.txt                          # one authorisation for the whole list
+zsra-inventory hosts.txt --skip clamav lynis      # other options: added to every line (also after --)
+```
+
+Why the same syntax: nothing new to learn, every option and validation of zsra applies, and a line can be tried
+alone by putting `zsra` in front of it. Every line is checked **before** anything starts (a mistake on line 7 stops
+the run before machine 1 is touched); the machines are then assessed one after the other (in parallel the
+passwords asked by `--ask-pass` would mix on the terminal), and one that fails does not stop the others. Everything
+goes into `reports/inventory_<date>/`: one report directory per machine and `summary.html` / `.md` / `.json`, sorted
+from the worst machine, with a link to each report. `--out-dir`, `--yes` and `--recover` are not allowed in the
+lines. Verified on the lab (2026-10-23): severe, medium, clean and secure in one run, all four assessed, with the
+expected results (CRITICAL, HIGH, HIGH, LOW).
+
+**A different sudo password for each machine.** `--ask-sudo-pass` asks for one password per machine, which is easy
+to mistype in a long run. With `--sudo-pass-env` each line names its own environment variable:
+
+```
+192.168.1.50 -u admin -i ~/.ssh/id_ed25519                              # sudo without a password
+192.168.1.51 -u admin -i ~/.ssh/id_ed25519 --sudo-pass-env PW_WEB
+192.168.1.52 -u admin -i ~/.ssh/id_ed25519 --sudo-pass-env PW_DB
+```
+
+```bash
+read -rsp "web: " PW_WEB; echo        # -s: not shown and not saved in the shell history
+read -rsp "db: "  PW_DB;  echo
+export PW_WEB PW_DB
+zsra-inventory hosts.txt
+unset PW_WEB PW_DB                    # only after the run has finished
+```
+
+An environment variable is visible only to its owner and root, an argument to every user through `ps`. The
+variables must be set in the same terminal that runs `zsra-inventory`: an empty or undefined one stops the run
+before the first machine, naming the line. A password that is set but wrong is reported in the summary as
+`sudo REJECTED the password` for that machine only, after a few seconds.
+
+### Installing nothing on the target (`--no-install`)
+
+```bash
+zsra HOST -u admin -i KEY --no-install
+```
+
+No repository refresh, no package snapshot, no manifest, nothing installed and nothing to remove: ClamAV, chkrootkit
+and smartmontools are used only if the target already has them, otherwise their checks are skipped and the report
+says so (*Tools* list and *Mode* row). Useful on a production machine where installing packages needs a change
+request. Lynis is still copied to `/tmp` and deleted at the end: add `--skip lynis` to leave no file at all.
+Verified on the lab: 132 installed packages before and after, no manifest.
 
 ---
 
@@ -452,7 +618,9 @@ zsra HOST -u admin -i KEY --recover
 |---|---|---|
 | `host` | — | IP or name of the target (omitted with `--local`) |
 | `--local` | no | assess the machine running the command, without SSH |
-| `-u, --user` | — (required with a host) | SSH user: root or with sudo |
+| `--recon-only` | no | external reconnaissance only: no login, nothing run or written on the target |
+| `--dns-zone ZONE...` | — | DNS zones whose transfer (AXFR) is tried from the controller |
+| `-u, --user` | — (required with a host, except with `--recon-only`) | SSH user: root or with sudo |
 | `-p, --port` | 22 | SSH port |
 | `-i, --key` | agent / default keys | SSH private key |
 | `--ask-pass` | no | prompt for the SSH password |
@@ -463,17 +631,25 @@ zsra HOST -u admin -i KEY --recover
 | `--lynis-dir` | `vendor/lynis` | Lynis copy to bring to the target |
 | `--nmap-ports` | top 1000 | `1-1024,8080`; `-` = all |
 | `--nse-tls` | no | also run `ssl-enum-ciphers` (TLS protocols/ciphers; more connections) |
+| `--no-nse` | no | nmap without NSE scripts (only ports and versions): fewer connections, for fragile services |
 | `--clamav-quick` / `--clamav-full` | critical directories | fast ClamAV scan / whole disk |
 | `--skip` | — | checks to skip (list in `zsra --help`) |
 | `--scan-timeout` | 60 | maximum minutes per check |
 | `--out-dir` | `./reports` | report directory |
-| `--keep-tools` | no | do not remove ClamAV and chkrootkit at the end (debugging only) |
+| `--no-install` | no | install nothing on the target: ClamAV, chkrootkit and smartmontools only if already present |
+| `--keep-tools` | no | do not remove ClamAV, chkrootkit and smartmontools at the end (debugging only) |
 | `--recover` | — | cleanup after an interrupted run |
 | `--yes` | no | do not ask for the authorisation confirmation |
 | `--no-banner` | no | do not show the mascot at startup (also `ZSRA_NO_BANNER=1`) |
 
 Exit codes: `0` completed, `1` confirmation denied or `--recover` unsuccessful, `2` error (connection, permissions,
-host key), `130` interrupted with Ctrl-C.
+host key, unsupported distribution), `130` interrupted with Ctrl-C.
+
+`zsra-finalize` (see `zsra-finalize --help`): `DRAFT_DIR`, `--recipient` (repeatable), `--sign-key`, `--omit ID`
+(repeatable) with `--reason`, `--upload` / `--upload-only` with `--host`, `-u`, `-p`, `-i`, `--ask-pass`,
+`--ask-key-pass`, `--accept-new-hostkey`. `zsra-compare BEFORE AFTER [-o FILE.md]`.
+`zsra-inventory FILE [--yes] [--out-dir DIR] [-- OPTIONS]` (exit `2` if a machine was not assessed).
+`zsra-pdf REPORT_DIR` writes `report.pdf` for an existing report. All of them exit with `2` on error.
 
 ---
 
@@ -552,14 +728,16 @@ context (see ISO/IEC 27005 and the OWASP Risk Rating Methodology in the referenc
 | SSH (configuration) | native | `PermitRootLogin`, `PermitEmptyPasswords`, password login, `MaxAuthTries` |
 | Permissions | native | world-writable files/directories, readable private keys, unusual SUID files |
 | Persistence | native | cron, systemd units, suspicious authorized keys |
-| Integrity | native | modified package files (`dpkg -V`) |
+| Integrity | native | modified package files (`dpkg -V`, `rpm -V`) |
 | Services and listeners | native | services listening on all interfaces |
 | Firewall | native + nmap | no firewall, unfiltered open ports |
 | Kernel / platform | native | sysctl parameters, ASLR, modules |
-| Updates | native (`apt`) | pending security updates |
+| Updates | native (`apt`, `dnf`) | pending security updates |
+| Resources | native (`/proc`, `/sys`) | constant CPU load (a cryptominer's typical sign), load, RAM, swap, disk space, temperatures against the limits the sensors declare; in a container the host's values are information only, read-only filesystems are not counted as full |
+| Disks | **smartmontools** (installed temporarily) + native | SMART health, NVMe wear and integrity errors, degraded RAID, I/O errors in the kernel log, filesystems remounted read-only after an error, exhausted inodes. Read-only: never `fsck`. Not in containers (the disks belong to the host) |
 | MySQL / MariaDB | native | users without password, public listening, TLS |
 | FTP (vsftpd) | native | anonymous access, anonymous upload, no TLS |
-| DNS (bind) | native + nmap | open recursion, AXFR |
+| DNS (bind) | native + nmap (+ DNS probes with `--recon-only`) | open recursion, AXFR |
 | Containers | native | exposed Docker socket, privileged containers |
 
 Where relevant, every problem in the report also carries **MITRE ATT&CK** and **CIS Controls v8** references.
@@ -572,10 +750,12 @@ For each run: `reports/<host>_<YYYYMMDD-hhmmss>/`
 
 | File | Intended for | Content |
 |---|---|---|
-| `report.html` | **reading** | coloured matrix, risk table with expandable evidence, CVEs, method, checks, appendix. A single file with no external resources or scripts: it opens offline and can be printed to PDF from the browser |
+| `report.html` | **reading** | coloured matrix, risk table with expandable evidence, CVEs, method, checks, appendix. A single file with no external resources or scripts: it opens offline |
 | `report.md` | archiving / versioning | the same content in Markdown (ASCII-only graphics); readable on GitHub or in an editor's preview |
 | `report.json` | other tools | all data in structured form, including the raw output of the checks |
+| `report.pdf` | printing, e-mail, archive | the same content as the HTML (A4 landscape, coloured matrix and table, appendix), written with ReportLab from the same data: identical on every machine, no browser involved. Missing only if ReportLab is not installed (`zsra-pdf` adds it later) |
 | `report.json.sha256` | report recipients | JSON fingerprint: `sha256sum -c report.json.sha256` shows whether it has been modified |
+| `final/` (after `zsra-finalize`) | delivery | `report-HOST_DATE.tar.gz.age` (encrypted: report.html, .md, .json), `.sig` (signature), `allowed_signers`, `README-recipient.txt`, `manifest.json`, and the plaintext final version `report-final.*` for your archive |
 
 To open the report at the end of the run (the exact path is printed on the terminal):
 
@@ -593,7 +773,7 @@ commit reports** of real machines (the examples in `docs/` come from the lab and
 
 At the end, a summary with the overall risk and the first 10 rows of the table is printed on the terminal.
 
-![Risk table](ZeroStressRiskAssess/docs/screenshot-table.png)
+![Risk table](docs/screenshot-table.png)
 
 In the table each row states **why** it has that likelihood: for R01, "port 22 reachable from the controller" is what
 nmap actually measured. Had the port been closed by the firewall, the likelihood
@@ -603,10 +783,15 @@ would have dropped by 2.
 
 ## 10. What is left on the target (nothing)
 
-- **ClamAV** and **chkrootkit** are installed with `apt` only if they were not already present, and removed at the end
-  (together with the dependencies installed for them). chkrootkit needs `strings`, from `binutils`: on normal systems it
-  is already there and is left untouched; on minimal systems it is installed and removed with chkrootkit. A manifest in
-  `/var/lib/zerostressriskassess` records what to remove, even after an interruption (`--recover`).
+- **ClamAV**, **chkrootkit** and **smartmontools** are installed with `apt` or `dnf` only if they were not already
+  present, and removed at the end (together with the dependencies installed for them). chkrootkit needs `strings`, from
+  `binutils`: on normal systems it is already there and is left untouched; on minimal systems it is installed and
+  removed with chkrootkit. On the RHEL family `epel-release` is installed if needed and removed too. smartmontools is
+  not installed in a container. A manifest in `/var/lib/zerostressriskassess` records what to remove, even after an
+  interruption (`--recover`).
+- A package removed earlier **without purge** (state `rc` in `dpkg -l`: its configuration files are still there) counts
+  as *not installed*: the tool installs it, and at the end removes it **without** purging, so the owner's configuration
+  files stay exactly as they were (verified with smartmontools and an edited `/etc/smartd.conf`, same checksum).
 - **rkhunter** is never installed. Its file check compares the system with a baseline created earlier: a baseline
   created now, on a machine that may already be compromised, would certify tampered files as good. If the target
   already has rkhunter, it is used as it is, the date of its baseline is shown in the report, and `rkhunter --propupd`
@@ -614,6 +799,7 @@ would have dropped by 2.
 - **Lynis** is not installed: it is copied as an in-memory archive, verified with SHA-256, extracted into a temporary
   root-owned directory (`/tmp/zerostressriskassess-lynis.XXXXXX`, mode 700), executed and deleted.
 - **Grype** and **Trivy** run on the controller: only the package list is read from the target.
+- With **`--no-install`** nothing at all is installed, and nothing is removed (section 5).
 - No service is modified or restarted. System logs record the SSH connection and the sudo commands as usual (as they
   should).
 
@@ -661,6 +847,12 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 | lab: network already in use | `LAB_PREFIX=10.99.0 ./lab/lab.sh up` |
 | lab: `container name ... is already in use` after updating the repository | containers created with the old Italian profile names: `docker ps -a --filter name=zerostressriskassess-lab-` and remove them with `docker rm -f NAME` |
 | assessment interrupted midway | `zsra HOST ... --recover` |
+| `setup.sh`: `pip ... trusts the compromised eMudhra CAs` | an existing `.venv` created before October 2026: run `./setup.sh` again (it installs pip 26.2.2 by hash) |
+| `setup.sh`: `ca-certificates ... still trusts emSign` | `sudo apt update && sudo apt install --only-upgrade ca-certificates` |
+| `UnsupportedOS: ...: Arch family (package managers: pacman)` | the distribution is not supported for the full assessment (section 2): use `--recon-only`, or assess a supported machine |
+| `'age' not found on the controller` | `sudo apt install age` (needed only by `zsra-finalize`) |
+| `zsra-finalize`: `IDs not in the report` | the IDs are those of THAT report: R.. from the risk table, F.. from the appendix |
+| recipient: `Signature verification failed` | the file was altered or is not the one that was signed: do not open it, ask for it again |
 
 ---
 
@@ -670,20 +862,26 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 ZeroStressRiskAssess/
 ├── README.md                 this file
 ├── setup.sh                  controller preparation
-├── pyproject.toml            Python package and `zsra` command
+├── pyproject.toml            Python package and the zsra, zsra-finalize, zsra-compare, zsra-inventory, zsra-pdf commands
 ├── requirements.txt          Python dependencies (paramiko)
 ├── zerostressriskassess/
 │   ├── cli.py                parameters and terminal summary
 │   ├── console.py            interactive console (`zsra` without arguments)
 │   ├── banner.py, mascot.txt   startup mascot (the .txt file can be replaced)
-│   ├── orchestrator.py       order of the checks, guaranteed cleanup
+│   ├── orchestrator.py       order of the checks, guaranteed cleanup, reconnaissance-only mode
+│   ├── osinfo.py             distribution recognition (os-release, families, tested releases)
+│   ├── pkgmgr.py             apt and dnf/yum
+│   ├── finalize.py           report phase 2: omissions, age encryption, SSH signature, upload (`zsra-finalize`)
+│   ├── compare.py, fingerprint.py   comparison of two runs (`zsra-compare`)
+│   ├── inventory.py          several machines from an inventory file (`zsra-inventory`)
+│   ├── pdfreport.py          report.pdf with ReportLab (`zsra-pdf`)
 │   ├── risk.py               ★ impact × likelihood model (rules, scales, exposure)
 │   ├── correlate.py          merging findings into problems, MITRE/CIS
 │   ├── report.py             Markdown/JSON report
 │   ├── htmlreport.py         HTML report (the one to read)
 │   ├── cve.py, vercmp.py     package inventory, SBOMs, Grype/Trivy, dpkg version comparison
 │   ├── portable.py           portable Lynis
-│   ├── toolmgr.py            ClamAV/chkrootkit installation and removal, rkhunter detection
+│   ├── toolmgr.py            ClamAV/chkrootkit/smartmontools installation and removal, rkhunter detection
 │   ├── ssh_client.py         remote (SSH) and local execution
 │   └── scanners/             one module per check
 ├── docs/                     sample report and screenshots (from the lab)
@@ -697,25 +895,33 @@ To add a check: a module in `zerostressriskassess/scanners/` returning a `ScanRe
 
 ---
 
-## 14. Future work
+## 14. Coming soon
 
-Features already implemented in the previous project (`DeepSecurityScan`), to be reintegrated:
+Planned, not yet available. Each item from a real run carries the case that showed it.
 
-- **RHEL / Rocky / Alma** support (dnf, EPEL, SELinux);
-- report **encryption and signing** (age) and secure delivery;
-- **comparison between two runs** (what was fixed, what is new);
-- **resource and disk** checks (space, inodes, disk health);
-- `--no-install` option (nothing installed on the target: ClamAV and chkrootkit skipped).
-
-New:
-
-- assessment of **multiple machines** from an inventory, with a summary table;
+- **old kernels counted as CVEs "waiting for an update"**: on the Ubuntu 26.04 laptop most of the 5757 "fixed
+  upstream" CVEs came from `linux-headers-7.0.0-31*` while 7.0.0-38 was running. Recognise kernel packages older
+  than the running one and suggest `sudo apt autoremove --purge` instead;
+- **ClamAV `--clamav-full` scans container images**: the EICAR files found on the laptop were inside
+  `/var/lib/containerd` (layers of the lab images) and the scan took 2.6 hours. Exclude `/var/lib/containerd` and
+  `/var/lib/docker`, evaluate `--cross-fs=no` and `/snap`;
+- **risk rule for "Passwordless sudo rule"** (NOPASSWD on a specific command): today it falls back to an estimate;
+- **chkrootkit on Rocky 9**: not in the base repositories nor in EPEL 9; evaluate an alternative source;
+- **Trivy**: run `tools/verify_sbom.py --trivy` against the lab to compare the tool's SBOM with `trivy image`;
+- **SELinux / AppArmor** status (enforcing, permissive, disabled) as a check;
 - **configurable weights** (YAML file) to adapt impact and likelihood to the context: asset value, production vs
   test environments;
-- direct **PDF** export of the report (today: print to PDF from the HTML);
 - application-level checks (web servers, PHP, additional databases);
-- use of **EPSS** (CVE exploitation probability) alongside KEV;
-- localisation of the interface and reports into other languages (e.g. Italian).
+- **EPSS** (CVE exploitation probability) alongside KEV;
+- interface and reports in other languages (e.g. Italian);
+- refresh the sample report and the screenshots in `docs/` (they predate chkrootkit, rkhunter and the new
+  checks), possibly with a small script in `tools/` that regenerates them from the lab.
+
+Done in version 1.x, for the record: RHEL family support, `--recon-only`, two-phase report (encryption and
+signature), comparison of two runs, resources and disks checks, rkhunter warnings verified before rating,
+`--no-install`, inventory of several machines, PDF report. Rocky 9 and a real laptop (NVMe SMART) were run end to
+end on 2026-10-22; a failing disk has still never been seen, so the SMART warnings are tested on output written in
+smartctl's format.
 
 ---
 

@@ -18,6 +18,13 @@ SHADOW_AWK = r"""awk -F: '($2==""){print $1"|empty"} ($2 ~ /^[$]1[$]/){print $1"
 SHADOW_LINE = re.compile(r"[A-Za-z0-9._$-]+\|(empty|md5|des)")
 
 
+# Accounts that RHEL, Rocky, Alma and Fedora create by default with GID 0, each with its own special
+# shell. If the shell differs from the default one, the account has been modified and remains
+# a "medium" finding.
+
+RHEL_GID0 = {"sync": {"/bin/sync"}, "shutdown": {"/sbin/shutdown", "/usr/sbin/shutdown"},
+             "halt": {"/sbin/halt", "/usr/sbin/halt"}, "operator": {"/sbin/nologin", "/usr/sbin/nologin"}}
+
 def get_users(ctx):
     """Read /etc/passwd once and cache it for the other checks."""
     if "users" in ctx.cache:
@@ -42,7 +49,7 @@ def get_users(ctx):
 def run(ctx) -> ScanResult:
     res, rem = ScanResult("accounts"), ctx.rem
     users, uid_min = get_users(ctx)
-    by_uid, by_name, interactive = {}, {}, []
+    by_uid, by_name, interactive, rhel_gid0 = {}, {}, [], []
 
     for u in users:
         if u["bad"]:
@@ -63,7 +70,10 @@ def run(ctx) -> ScanResult:
                 facts.append(f"login shell {u['shell']}")
             res.add("critical", f"Account '{n}' with UID 0: equivalent to root", "Possible backdoor. " + "; ".join(facts) + ".")
         elif u["gid"] == "0" and n != "root":
-            res.add("medium", f"Account '{n}' with GID 0 (root group)")
+            if n in RHEL_GID0 and u["shell"] in RHEL_GID0[n]:
+                rhel_gid0.append(n)   # present like this on every RHEL/Rocky/Fedora installation
+            else:
+                res.add("medium", f"Account '{n}' with GID 0 (root group)")
         if u["pw"] == "":
             res.add("critical", f"Account '{n}' without password (empty field in /etc/passwd)")
         elif u["pw"] != "x":
@@ -83,6 +93,9 @@ def run(ctx) -> ScanResult:
         if c > 1:
             res.add("medium", f"User name '{n}' duplicated in /etc/passwd")
     res.data["interactive_users"] = interactive
+    if rhel_gid0:
+        res.add("info", f"Standard RHEL system accounts with GID 0: {', '.join(rhel_gid0)}",
+                "Created this way by the installer (sync, shutdown, halt, operator) with their default shells.")
     res.add("info", f"Users with interactive login: {', '.join(interactive) or 'none'}")
 
     # /etc/shadow: only "name|problem type" is printed, never the hash.

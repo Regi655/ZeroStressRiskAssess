@@ -26,6 +26,10 @@ from .validate import safe_name
 
 RAW_LIMIT = 20000   # raw tool output can be very large: it is truncated in the JSON
 LEVEL_ORDER = ["CRITICAL", "HIGH", "MEDIUM", "LOW"]
+# Document stage (meta["stage"]): every report starts as a draft; finalize.py turns it into the final version.
+DRAFT_STAGE = ("DRAFT for review - plaintext, kept on this controller only: do not distribute it in this form. "
+               "After the review: zsra-finalize REPORT_DIR --recipient ... --sign-key ...")
+FINAL_STAGE = "FINAL - reviewed, encrypted and signed"
 
 
 def build_report(meta: dict, results: list, tool_log: list, ctx: dict) -> dict:
@@ -113,18 +117,29 @@ def _matrix_md(rated: list) -> list:
 def to_markdown(rep: dict) -> str:
     m, s, rated = rep["meta"], rep["summary"], rep["risks"]
     L = [f"# Risk assessment — {_md(m['target'])}", ""]
-    L += _table(["", ""], [
-        ["Date", m.get("timestamp", "?")],
-        ["System", f"{_md(m.get('os', '?'))} (kernel {_md(m.get('kernel', '?'))})"
-                    + (" — **container**" if m.get("container") else "")],
-        ["Mode", _md(m.get("mode", "?"))],
-        ["Sources", _md(", ".join(m.get("sources", [])))],
-        ["Tool", f"ZeroStressRiskAssess {_md(m.get('version', '?'))}"]])
+    system = (_md(m.get("os", "?")) + (f" (kernel {_md(m['kernel'])})" if m.get("kernel") else "")
+              + (f" — {_md(m['os_family'])}" if m.get("os_family") else "")
+              + (" — **container**" if m.get("container") else ""))
+    rows = [["Date", m.get("timestamp", "?")], ["System", system]]
+    if m.get("os_notes"):
+        rows.append(["Platform notes", _md(" ".join(m["os_notes"]))])
+    rows.append(["Mode", _md(m.get("mode", "?"))])
+    if m.get("scope"):
+        rows.append(["Scope", f"**{_md(m['scope'])}**"])
+    rows += [["Sources", _md(", ".join(m.get("sources", [])))],
+             ["Tool", f"ZeroStressRiskAssess {_md(m.get('version', '?'))}"]]
+    L += _table(["", ""], rows)
     L += ["", f"## Overall risk: **{s['level']}**", "",
           f"{len(rated)} problems: " + ", ".join(f"{s['counts'][lv]} {lv.lower()}" for lv in LEVEL_ORDER)
           + ". The overall risk is that of the most severe problem.", ""]
     if m.get("stage"):
         L += [f"> **{_md(m['stage'])}**", ""]
+    if rep.get("omissions"):
+        L += ["## Details omitted in review", "",
+              "The findings below are still in the report with title and severity; their details (and the raw output "
+              "of their check) were removed before delivery, for the stated reason.", ""]
+        L += [f"- `{o['id']}`" + (f" ({o['problem']})" if o.get("problem") else "")
+              + f" {_md(o['title'])} - reason: {_md(o['reason'])}" for o in rep["omissions"]] + [""]
 
     L += ["## Risk matrix (impact x likelihood)", "",
           "Each cell: number of problems, risk level, problem IDs (see the table). "
@@ -158,7 +173,9 @@ def to_markdown(rep: dict) -> str:
                  for sc in rep["scans"]]) + [""]
     if rep.get("tools"):
         L += ["Tools installed and removed on the target:", ""]
-        L += [f"- `{_md(t.get('package', '-'))}`: {_md(t['action'])}" for t in rep["tools"]] + [""]
+        # package "-" = the action concerns the tool, not a package (e.g. "not needed"): the tool name is shown
+        L += [f"- `{_md(t['tool'] if t.get('package', '-') == '-' else t['package'])}`: {_md(t['action'])}"
+              for t in rep["tools"]] + [""]
 
     L += ["## Appendix: findings of each check", "",
           "The evidence cited in the table. Finding severity: critical, high, medium, low, info.", ""]
@@ -215,7 +232,7 @@ def _method_md() -> list:
 
 
 # ---------------------------------------------------------------------- output files
-def save(rep: dict, md: str, base_dir: str, host: str, ts: str, html: str = "") -> Path:
+def save(rep: dict, md: str, base_dir: str, host: str, ts: str, html: str = "", pdf: bytes = b"") -> Path:
     d = Path(base_dir) / f"{safe_name(host)}_{ts}"
     d.mkdir(parents=True, exist_ok=True)
     os.chmod(d, 0o700)   # the report describes the machine's weaknesses: accessible to its author only
@@ -224,6 +241,8 @@ def save(rep: dict, md: str, base_dir: str, host: str, ts: str, html: str = "") 
     write_private(d / "report.md", md)
     if html:
         write_private(d / "report.html", html)
+    if pdf:
+        write_private_bytes(d / "report.pdf", pdf)
     # JSON fingerprint: the recipient can verify the report has not been modified
     # (sha256sum -c report.json.sha256).
     write_private(d / "report.json.sha256", hashlib.sha256(js.encode("utf-8")).hexdigest() + "  report.json\n")
@@ -232,7 +251,11 @@ def save(rep: dict, md: str, base_dir: str, host: str, ts: str, html: str = "") 
 
 def write_private(path, content: str):
     """Create the file ALREADY with mode 600 (write_text + chmod would leave a window in which it is readable)."""
+    write_private_bytes(path, content.encode("utf-8"))
+
+
+def write_private_bytes(path, data: bytes):
     fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8") as f:
-        f.write(content)
+    with os.fdopen(fd, "wb") as f:
+        f.write(data)
     os.chmod(path, 0o600)

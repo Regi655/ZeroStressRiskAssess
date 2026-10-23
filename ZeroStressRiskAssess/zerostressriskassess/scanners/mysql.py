@@ -198,9 +198,15 @@ def run(ctx) -> ScanResult:
             ("listening on the network (bind-address " + (bind or "?") + ")" if exposed else "local only"))
 
     g, port = None, int(v.get("port", 3306)) if str(v.get("port", "3306")).isdigit() else 3306
-    if exposed or "3306" in str(ctx.cache.get("nmap_open", "")):
+    local = bool(getattr(ctx.opts, "local", False))
+    if (exposed or "3306" in str(ctx.cache.get("nmap_open", ""))) and not local:
+        # With --local the "controller" IS the machine: a probe from here goes through no firewall and proves nothing.
         g = mysqlprobe.probe(ctx.rem.host, port)
         res.data["probe"] = g
+    if local and exposed:
+        res.add("medium", f"{flavor} listening on all interfaces (bind-address {bind or '?'}): exposure not verified "
+                "(local mode)", "Whether it is reachable from the network depends on the firewall: verify it from another "
+                "machine (zsra --recon-only), or set bind-address = 127.0.0.1 if only local programs use it.")
 
     if v:
         auth = parse_tsv(_sql(rem, Q_AUTH_MARIADB if flavor == "MariaDB" else Q_AUTH_MYSQL) or "", 5)

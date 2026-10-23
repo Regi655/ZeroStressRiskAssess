@@ -34,6 +34,7 @@ lab/.ssh/
 removed-code.md
 # Grype output or test reports saved inside re-included directories
 grype-*.json
+reports/
 report.json
 report.md
 report.html
@@ -41,3 +42,7 @@ report.html
 
 # Excluded by the first rule and therefore never published: .venv/, vendor/ (Lynis, fetched by setup.sh),
 # reports/ (they describe the weaknesses of the assessed machines), tests/, .github/, requirements-dev.txt.
+
+hosts.txt
+
+# Hosts for the inventory mode

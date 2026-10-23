@@ -113,6 +113,10 @@ class Remote:
         chan.exec_command(wrapped)
         if need_sudo and self.sudo_password:
             chan.sendall((self.sudo_password + "\n").encode())
+        # End of input: with a WRONG sudo password, sudo prints "Sorry, try again." and waits for another attempt.
+        # Without EOF it waited until the timeout (600 s for each command; lab clean and secure, 2026-10-23); with
+        # EOF it gives up at once. No command of the tool reads stdin, so closing it changes nothing else.
+        chan.shutdown_write()
 
         start = time.time()
         buf, deadline, next_note = [], start + timeout, start + HEARTBEAT
@@ -162,6 +166,28 @@ class Remote:
                 f.write(content.encode("utf-8"))
         finally:
             sftp.close()
+
+
+class NoLogin:
+    """Target of a --recon-only assessment: only its address is known, and NO command can run on it.
+
+    The external checks only use host and port. If a check tried to run a command on the target anyway, it
+    must fail loudly rather than silently touch a machine that must not be contaminated.
+    """
+    progress = None
+
+    def __init__(self, host, port=22):
+        self.host, self.port = host, port
+        self.calls = []
+
+    def run(self, cmd, **kw):
+        raise RuntimeError("recon-only: no command may be run on the target")
+
+    def connect(self):
+        raise RuntimeError("recon-only: no login on the target")
+
+    def close(self):
+        pass
 
 
 class Local:

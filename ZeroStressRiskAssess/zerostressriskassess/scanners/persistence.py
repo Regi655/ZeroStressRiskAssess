@@ -79,12 +79,14 @@ def run(ctx) -> ScanResult:
 
     # ---- rc.local and init.d scripts not owned by packages
     for path, line in _grep(rem, "/etc/rc.local"):
-        if line.strip() == "exit 0" or line.startswith("#!"):
+        # "touch /var/lock/subsys/local" is the default content of rc.local on RHEL/Rocky.
+        if line.strip() in ("exit 0", "touch /var/lock/subsys/local") or line.startswith("#!"):
             continue
         res.add("low", "rc.local contains commands", f"{path}: {line.strip()[:200]}")
         _flag(res, "rc.local", path, line)
+    own = "dpkg -S" if ctx.osinfo.pkg_mgr == "apt" else "rpm -qf"
     unowned = rem.run(
-        "for f in /etc/init.d/*; do [ -f \"$f\" ] || continue; dpkg -S \"$f\" >/dev/null 2>&1 || echo \"$f\"; done "
+        f"for f in /etc/init.d/*; do [ -f \"$f\" ] || continue; {own} \"$f\" >/dev/null 2>&1 || echo \"$f\"; done "
         "| head -60", sudo=True).out.split()
     for f in unowned:
         if not f.endswith(("/README", "/skeleton")):

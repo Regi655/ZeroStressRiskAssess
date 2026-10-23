@@ -22,17 +22,22 @@ import shlex
 from datetime import datetime
 
 from .osinfo import OSInfo
-from .pkgmgr import Apt
+from .pkgmgr import Apt, Dnf
 from .validate import split_pkgs
 
 # Tools installed on the target with apt and removed at the end: ClamAV (antivirus) and chkrootkit (rootkits).
 # Lynis is PORTABLE instead (copied and deleted, see portable.py): no package involved.
 # binutils provides `strings`, without which chkrootkit stops immediately ("can't find strings"). Normal
 # systems already have it (then it is neither installed nor removed); minimal containers do not.
-TOOLS = {"clamav": {"apt": ["clamav"], "bin": "clamscan"},
-         "chkrootkit": {"apt": ["chkrootkit", "binutils"], "bin": "chkrootkit"}}
+# On the RHEL family ClamAV and chkrootkit live in EPEL; freshclam is a separate package there
+# ("clamav-freshclam" on EPEL 8/9/10: the older name "clamav-update" left the signatures unupdated on Rocky 9).
+TOOLS = {"clamav": {"apt": ["clamav"], "dnf": ["clamav", "clamav-freshclam"], "bin": "clamscan"},
+         "chkrootkit": {"apt": ["chkrootkit", "binutils"], "dnf": ["chkrootkit", "binutils"], "bin": "chkrootkit"},
+         "smartmontools": {"apt": ["smartmontools"], "dnf": ["smartmontools"], "bin": "smartctl"}}
 # Which check uses which tool: if the check is skipped (--skip) the tool is not installed.
-TOOL_SCAN = {"clamav": "clamav", "chkrootkit": "chkrootkit"}
+TOOL_SCAN = {"clamav": "clamav", "chkrootkit": "chkrootkit", "smartmontools": "disks"}
+# Tools that are useless in a container (the hardware belongs to the host): not installed there.
+HOST_ONLY_TOOLS = {"smartmontools"}
 # SUPPORT packages (needed by a tool, not the tool itself): installed only if missing and never upgraded.
 # Upgrading binutils on a server would be an unnecessary change.
 HELPER_PKGS = {"binutils"}
@@ -50,18 +55,20 @@ class StaleManifest(RuntimeError):
 
 
 def make_pm(rem, osinfo: OSInfo):
-    return Apt(rem)
+    return Apt(rem) if osinfo.pkg_mgr == "apt" else Dnf(rem, osinfo.pkg_mgr)
 
 
 class ToolManager:
-    def __init__(self, rem, osinfo: OSInfo, keep: bool = False, skip=(), portable=None):
+    def __init__(self, rem, osinfo: OSInfo, keep: bool = False, skip=(), portable=None, no_install: bool = False):
         self.rem, self.osinfo, self.keep = rem, osinfo, keep
+        self.no_install = no_install   # --no-install: nothing installed, the tools are used only if already there
         self.skip = set(skip)
         self.portable = dict(portable or {})   # tool -> version: copied from the controller, no package
         self.pm = make_pm(rem, osinfo)
         self.log: list[dict] = []        # reported: what was done on the target
         self.available: set[str] = set()  # tools actually usable
         self._before: set[str] = set()
+        self._conf_before: set[str] = set()
         self._prepared = False            # True only after a successful snapshot + manifest
         self.installed: list[str] = []    # packages installed by us during this run
 
@@ -76,6 +83,7 @@ class ToolManager:
             "pkg_mgr": self.osinfo.pkg_mgr,
             "policy_rc_created": getattr(self.pm, "_policy_created", False),
             "before": sorted(self._before),
+            "config_only": sorted(self._conf_before),
         })
         # Uploaded first to the SSH user's home directory, then moved into place by root with mode 600
         # (it only contains package names, but nobody else needs it).
@@ -90,6 +98,7 @@ class ToolManager:
 
     # ------------------------------------------------------------------ preparation
     def prepare(self):
+        key = self.osinfo.family_key
 
         # An existing manifest means a previous run was interrupted. Proceeding would make its packages
         # look "already present before us" and they would never be removed: stop and let the operator
@@ -98,6 +107,19 @@ class ToolManager:
             raise StaleManifest("A manifest from an interrupted run exists on the target. "
                                 "Run again with --recover to clean up, then retry.")
 
+        if self.no_install:
+            # No repository refresh, no snapshot, no manifest: the target's package state is not touched at all, so
+            # there is nothing to remove at the end (_prepared stays False and cleanup() does nothing).
+            self._detect()
+            for tool in TOOLS:
+                if TOOL_SCAN.get(tool) in self.skip or (tool in HOST_ONLY_TOOLS and self.osinfo.container):
+                    continue
+                lost = "SMART disk health not checked" if tool == "smartmontools" else "its check is skipped"
+                self._note(tool=tool, package="-", action=(
+                    "already present on the target: used, not modified (--no-install)" if tool in self.available
+                    else f"NOT present and not installed (--no-install): {lost}"))
+            return
+
         r = self.pm.refresh()  # without a fresh index the candidate version would be stale
         if r.rc != 0:
             self._note(tool="*", package="-", action="repository index update FAILED "
@@ -105,6 +127,7 @@ class ToolManager:
                        detail=r.out[-300:])
 
         self._before = self.pm.snapshot()  # snapshot BEFORE changing anything
+        self._conf_before = self.pm.config_only()   # removed earlier, configuration kept: restored as it was
         if not self._before:
             raise RuntimeError("Empty list of installed packages: aborting for safety.")
         self.pm.block_daemons()
@@ -113,19 +136,32 @@ class ToolManager:
             raise RuntimeError("Cannot write the manifest on the target: aborting before installing.")
         self._prepared = True
 
-        to_install, to_upgrade = [], []
+        to_install, to_upgrade, epel_tried = [], [], False
         for tool, spec in TOOLS.items():
             if TOOL_SCAN.get(tool) in self.skip:
                 self._note(tool=tool, package="-", action="not needed (check skipped with --skip)")
+                continue
+            if tool in HOST_ONLY_TOOLS and self.osinfo.container:
+                self._note(tool=tool, package="-", action="not needed in a container (the disks belong to the host)")
                 continue
             if tool in self.portable:
                 self._note(tool=tool, package="-", action=f"portable from the controller (version {self.portable[tool]}): "
                            "no package installed, temporary directory deleted after the scan")
                 continue
-            for pkg in spec["apt"]:
+            for pkg in spec[key]:
                 inst, cand, upg = self.pm.status(pkg)
                 if pkg in HELPER_PKGS and inst is not None:
                     continue  # already present: left untouched and not recorded
+
+                # On RHEL and derivatives these packages are in EPEL, not in the base repositories. epel-release
+                # is installed like any other package: it is in the snapshot difference and removed at the end.
+                if inst is None and cand is None and key == "dnf" and not epel_tried:
+                    epel_tried = True
+                    r = self.pm.install(["epel-release"])
+                    self._note(tool="epel-release", package="epel-release",
+                               action=f"installed to reach the EPEL repository (rc={r.rc}), removed at the end")
+                    self.pm.refresh()
+                    inst, cand, upg = self.pm.status(pkg)
 
                 if inst is None and cand is None:
                     self._note(tool=tool, package=pkg, action="NOT available in the repositories of "
@@ -150,6 +186,9 @@ class ToolManager:
             self._note(tool="*", package=",".join(to_upgrade),
                        action=f"upgrade rc={r.rc}", detail=r.out[-400:] if r.rc else "")
 
+        self._detect()
+
+    def _detect(self):
         # Final check: rely on the binary being present, not on the exit code.
         # sudo=True because some binaries live in /usr/sbin, outside regular users' PATH.
         bins = {t: s["bin"] for t, s in TOOLS.items()}
@@ -196,7 +235,7 @@ class ToolManager:
                                       "packages not installed by us (manifest kept)", detail=extra)
                     return
 
-            r = self.pm.remove(new_pkgs)
+            r = self.pm.remove(new_pkgs, keep_config=self._conf_before)
             leftovers = sorted(set(new_pkgs) & self.pm.snapshot())
             self._note(tool="*", package=",".join(new_pkgs), action=f"removal rc={r.rc}",
                        detail=("STILL PRESENT: " + ",".join(leftovers)) if leftovers else "")
@@ -241,7 +280,7 @@ def recover_interrupted(rem, osinfo: OSInfo, confirm, log=print) -> bool:
         if not confirm(f"Remove these {len(new)} packages from the target?"):
             log("Cancelled by the user.")
             return False
-        rr = pm.remove(new)
+        rr = pm.remove(new, keep_config=set(data.get("config_only", [])))
         log(f"Removal completed (rc={rr.rc}).")
         if rr.rc != 0:
             return False

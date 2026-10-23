@@ -2,8 +2,8 @@
 the target.
 
 Nothing is installed on the target:
-  1. the target provides its OS (/etc/os-release), the installed packages (dpkg-query)
-     and the updates AVAILABLE right now (apt list --upgradable);
+  1. the target provides its OS (/etc/os-release), the installed packages (dpkg-query or rpm -qa)
+     and the updates AVAILABLE right now (apt list --upgradable or dnf check-update);
   2. the controller writes a CycloneDX SBOM (the package list in a standard format) and passes it
      to Grype and/or Trivy, which match it against their vulnerability databases. When both are installed the
      results are merged: the same CVE on the same package counts once, and each entry records which scanner
@@ -30,10 +30,16 @@ from .vercmp import compare
 
 INVENTORY = r"""
 . /etc/os-release 2>/dev/null; echo "OS|${ID}|${VERSION_ID}"
-echo "KIND|deb"
-dpkg-query -W -f='${db:Status-Abbrev}\t${Package}\t${Version}\t${Architecture}\t${source:Package}\t${source:Version}\n' \
-  2>/dev/null | awk -F'\t' '$1 ~ /^ii/ {print "PKG|" $2 "|" $3 "|" $4 "|" $5 "|" $6}'
-apt list --upgradable 2>/dev/null | awk -F'[/ ]' 'NF>2 && $1 != "Listing..." {print "AVAIL|" $1 "|" $3}'
+if command -v dpkg-query >/dev/null 2>&1; then
+  echo "KIND|deb"
+  dpkg-query -W -f='${db:Status-Abbrev}\t${Package}\t${Version}\t${Architecture}\t${source:Package}\t${source:Version}\n' \
+    2>/dev/null | awk -F'\t' '$1 ~ /^ii/ {print "PKG|" $2 "|" $3 "|" $4 "|" $5 "|" $6}'
+  apt list --upgradable 2>/dev/null | awk -F'[/ ]' 'NF>2 && $1 != "Listing..." {print "AVAIL|" $1 "|" $3}'
+elif command -v rpm >/dev/null 2>&1; then
+  echo "KIND|rpm"
+  rpm -qa --qf 'PKG|%{NAME}|%{EPOCHNUM}:%{VERSION}-%{RELEASE}|%{ARCH}|%{SOURCERPM}|\n' 2>/dev/null | grep -v '^PKG|gpg-pubkey|'
+  (dnf -q check-update 2>/dev/null || yum -q check-update 2>/dev/null) | awk 'NF==3 && $1 ~ /\./ {print "AVAIL|" $1 "|" $2}'
+fi
 """
 
 SEV_MAP = {"critical": "critical", "high": "high", "medium": "medium", "low": "low", "negligible": "low",
@@ -54,17 +60,26 @@ def parse_inventory(text: str) -> dict:
             d["pkgs"].append({"name": p[1], "version": p[2], "arch": p[3], "source": p[4],
                               "source_version": p[5] if len(p) > 5 else ""})
         elif p[0] == "AVAIL" and len(p) >= 3:
-            d["avail"][p[1]] = p[2].strip()
+            name = p[1]
+            if d["kind"] == "rpm":
+                name = name.rsplit(".", 1)[0]          # "openssl-libs.x86_64" -> "openssl-libs"
+            d["avail"][name] = p[2].strip()
     return d
 
 
 def _purl(inv: dict, p: dict) -> str:
     distro = f"{inv['os']}-{inv['version']}"
-    q = f"arch={p['arch']}"
-    if p["source"] and p["source"] != p["name"]:
-        up = p["source"] + (f"@{p['source_version']}" if p["source_version"] and p["source_version"] != p["version"] else "")
-        q += "&upstream=" + quote(up, safe="")
-    return f"pkg:deb/{inv['os']}/{quote(p['name'], safe='')}@{quote(p['version'], safe='')}?{q}&distro={distro}"
+    if inv["kind"] == "deb":
+        q = f"arch={p['arch']}"
+        if p["source"] and p["source"] != p["name"]:
+            up = p["source"] + (f"@{p['source_version']}" if p["source_version"] and p["source_version"] != p["version"] else "")
+            q += "&upstream=" + quote(up, safe="")
+        return f"pkg:deb/{inv['os']}/{quote(p['name'], safe='')}@{quote(p['version'], safe='')}?{q}&distro={distro}"
+    epoch, _, vr = p["version"].partition(":") if ":" in p["version"] else ("0", "", p["version"])
+    q = f"arch={p['arch']}" + (f"&epoch={epoch}" if epoch not in ("", "0") else "")
+    if p["source"] and p["source"] != "(none)":
+        q += "&upstream=" + quote(p["source"], safe="")
+    return f"pkg:rpm/{inv['os']}/{quote(p['name'], safe='')}@{quote(vr, safe='')}?{q}&distro={distro}"
 
 
 def cyclonedx(inv: dict) -> dict:
@@ -188,8 +203,8 @@ def evaluate(c: dict) -> list:
     if c["waiting"]:
         pk = sorted({v["pkg"] for v in c["waiting"]})
         out.append(("info", f"{len(c['waiting'])} CVEs fixed upstream but without an update available here yet",
-                    "The fix exists (upstream or in the distribution's tracker), but this system's repository does "
-                    "not offer it yet: check again in a few days. Packages: "
+                    "The reference distribution vendor (e.g. Red Hat for Rocky) has the fix, but this system's "
+                    "repository does not yet: check again in a few days. Packages: "
                     + ", ".join(pk[:20])))
     if c["unfixed"]:
         cnt = {s: sum(1 for v in c["unfixed"] if v["severity"] == s) for s in ORDER}
@@ -212,6 +227,14 @@ def _split_deb(v: str):
     return (epoch, up, rev) if sep else (epoch, rest, "")
 
 
+def _split_srpm(srpm: str):
+    """Source RPM file name -> (name, version, release): "openssl-3.5.5-2.el9_8.src.rpm" ->
+    ("openssl", "3.5.5", "2.el9_8"); None if the name does not have that shape. Pure function."""
+    base = srpm[:-len(".src.rpm")] if srpm.endswith(".src.rpm") else ""
+    parts = base.rsplit("-", 2)
+    return tuple(parts) if len(parts) == 3 and all(parts) else None
+
+
 def cyclonedx_trivy(inv: dict) -> dict:
     """CycloneDX SBOM in the shape Trivy produces for a file system, so that `trivy sbom` reads it as OS packages.
 
@@ -228,8 +251,16 @@ def cyclonedx_trivy(inv: dict) -> dict:
     comps, refs = [{"bom-ref": "os", "type": "operating-system", "name": inv["os"], "version": inv["version"]}], []
     for i, p in enumerate(inv["pkgs"]):
         ref = f"pkg-{i}"
-        src = p["source"] or p["name"]
-        epoch, ver, rel = _split_deb(p["source_version"] or p["version"])
+        if inv["kind"] == "deb":
+            src = p["source"] or p["name"]
+            epoch, ver, rel = _split_deb(p["source_version"] or p["version"])
+        else:
+            epoch = p["version"].split(":", 1)[0] if ":" in p["version"] else ""
+            srpm = _split_srpm(p["source"])
+            if srpm:
+                src, ver, rel = srpm
+            else:
+                src, (_, ver, rel) = p["name"], _split_deb(p["version"])
         props = [prop("PkgType", inv["os"]), prop("SrcName", src), prop("SrcVersion", ver)]
         if rel:
             props.append(prop("SrcRelease", rel))
@@ -276,6 +307,15 @@ def run_trivy(inv: dict, timeout: int = 900):
                            capture_output=True, text=True, timeout=timeout, env=env)
     finally:
         os.unlink(path)
+    if not (ver.get("VulnerabilityDB") or {}).get("UpdatedAt"):
+        # First run with this cache (e.g. under sudo, root's cache): the database did not exist yet when the version
+        # was read, the scan has just downloaded it. Read again, or the report shows no database date (laptop,
+        # --local, 2026-10-22: "Trivy v0.75.0" alone).
+        try:
+            ver = json.loads(subprocess.run([exe, "version", "--format", "json"], capture_output=True, text=True,
+                                            timeout=60, env=env).stdout or "{}") or ver
+        except (ValueError, subprocess.TimeoutExpired):
+            pass
     try:
         return json.loads(p.stdout), trivy_info(ver), ""
     except ValueError:

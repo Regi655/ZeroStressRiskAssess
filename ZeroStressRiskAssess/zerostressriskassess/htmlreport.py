@@ -164,7 +164,8 @@ def _controls(rep) -> str:
         note = _e(sc["findings"][0]["title"], 200) if sc["status"] != "ok" and sc["findings"] else ""
         rows.append(f'<tr><td>{escape(sc["name"])}</td><td class="st-{escape(sc["status"])}">{escape(sc["status"])}</td>'
                     f'<td>{int(sc.get("duration", 0))} s</td><td>{len(sc["findings"])}</td><td>{note}</td></tr>')
-    tools = "".join(f"<li><code>{_e(t.get('package', '-'), 300)}</code>: {_e(t['action'])}</li>" for t in rep.get("tools") or [])
+    tools = "".join(f"<li><code>{_e(t['tool'] if t.get('package', '-') == '-' else t['package'], 300)}</code>: "
+                    f"{_e(t['action'])}</li>" for t in rep.get("tools") or [])
     return ("<h2>Checks performed</h2><div class=\"card scroll\"><p class=\"muted\">A <i>skipped</i> or "
             "<i>error</i> check verified NOTHING: the reason is in the Notes column.</p><table><tr><th>Check</th>"
             "<th>Status</th><th>Duration</th><th>Findings</th><th>Notes</th></tr>" + "".join(rows) + "</table>"
@@ -189,14 +190,32 @@ def _appendix(rep) -> str:
             + "".join(parts) + "</div>")
 
 
+def _stage(rep) -> str:
+    """Draft or final (meta stage) and, in the final version, the details omitted in review."""
+    m, out = rep["meta"], ""
+    if m.get("stage"):
+        out += f'<div class="card"><b>{_e(m["stage"])}</b></div>'
+    if rep.get("omissions"):
+        items = "".join(f"<li><b>{_e(o['id'])}</b>" + (f" ({_e(o['problem'])})" if o.get("problem") else "")
+                         + f" {_e(o['title'], 300)} - reason: {_e(o['reason'], 300)}</li>" for o in rep["omissions"])
+        out += ('<h2>Details omitted in review</h2><div class="card"><p class="muted">These findings are still in '
+                'the report with title and severity; their details (and the raw output of their check) were removed '
+                f'before delivery, for the stated reason.</p><ul>{items}</ul></div>')
+    return out
+
+
 def to_html(rep: dict) -> str:
     m, s, rated = rep["meta"], rep["summary"], rep["risks"]
     lv = s["level"] if s["level"] in LV_CLASS else "LOW"
     counts = "".join(f'<div class="count {LV_CLASS[k]}"><b>{s["counts"][k]}</b>{k.lower()}</div>' for k in LEVEL_ORDER)
     meta = "".join(f"<dt>{k}</dt><dd>{v}</dd>" for k, v in [
         ("Date", _e(m.get("timestamp", "?"))),
-        ("System", _e(f"{m.get('os', '?')} (kernel {m.get('kernel', '?')})") + (" — <b>container</b>" if m.get("container") else "")),
+        ("System", _e(m.get("os", "?") + (f" (kernel {m['kernel']})" if m.get("kernel") else ""))
+         + (f" — {_e(m['os_family'])}" if m.get("os_family") else "")
+         + (" — <b>container</b>" if m.get("container") else "")),
+        *([("Platform notes", _e(" ".join(m["os_notes"])))] if m.get("os_notes") else []),
         ("Mode", _e(m.get("mode", "?"))),
+        *([("Scope", f"<b>{_e(m['scope'])}</b>")] if m.get("scope") else []),
         ("Sources", _e(", ".join(m.get("sources", [])))),
         ("Duration", f"{int(m.get('duration_s', 0)) // 60} min {int(m.get('duration_s', 0)) % 60} s"),
         ("Tool", f"ZeroStressRiskAssess {_e(m.get('version', '?'))}")])
@@ -208,6 +227,7 @@ def to_html(rep: dict) -> str:
 <body><main>
 <h1>Risk assessment — {_e(m['target'], 200)}</h1>
 <div class="card"><dl class="meta">{meta}</dl></div>
+{_stage(rep)}
 <div class="summary">
   <div class="overall {LV_CLASS[lv]}">Overall risk<span class="big">{lv}</span>
   <span style="font-weight:400">{len(rated)} problems; the most severe one counts</span></div>

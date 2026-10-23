@@ -38,11 +38,13 @@ class Console(cmd.Cmd):
         self.prompt = "\x1b[1;36mzsra\x1b[0m > " if tty else "zsra > "
 
     # ------------------------------------------------------------------ execution
-    def _run(self, argv) -> int:
-        """Run cli.main as the direct command would, without terminating the console."""
-        from .cli import main
+    def _run(self, argv, main=None) -> int:
+        """Run cli.main (or another command's main) as the direct command would, without terminating the console."""
+        if main is None:
+            from .cli import main as cli_main
+            main, argv = cli_main, argv + ["--no-banner"]   # the console already showed the banner at startup
         try:
-            return main(argv + ["--no-banner"])   # the console already showed the banner at startup
+            return main(argv)
         except SystemExit as exc:      # argparse: --help or invalid options
             return exc.code if isinstance(exc.code, int) else 2
         except KeyboardInterrupt:
@@ -80,6 +82,68 @@ class Console(cmd.Cmd):
             self.stdout.write("Usage: scan HOST -u USER [options]   (help scan)\n")
             return
         self._run(argv + ([] if self._has_out_dir(argv) else ["--out-dir", self.out_dir]))
+
+    def do_recon(self, line):
+        """recon HOST [options]
+    External reconnaissance only: nmap, ssh-audit, DNS and MySQL probes from here.
+    No login: nothing is installed, run or written on the target (e.g. a machine that may be compromised
+    and must not be contaminated). Examples:
+      recon 192.168.1.50
+      recon ns1.lab --dns-zone example.lab --nmap-ports -"""
+        argv = self._split(line)
+        if argv is None:
+            return
+        if not argv:
+            self.stdout.write("Usage: recon HOST [options]   (help recon)\n")
+            return
+        self._run(argv + ["--recon-only"] + ([] if self._has_out_dir(argv) else ["--out-dir", self.out_dir]))
+
+    def do_finalize(self, line):
+        """finalize REPORT_DIR --recipient KEY [--sign-key KEY] [--omit ID --reason TEXT] [--upload ...]
+    Report phase 2: omit the details too sensitive to circulate, encrypt with age for the recipient,
+    sign with your SSH key and, with --upload, copy ONLY the encrypted file to the target. Example:
+      finalize reports/192.168.1.50_20261020-1600 --recipient age1... --sign-key ~/.ssh/id_ed25519
+    All options: finalize --help. Same as the zsra-finalize command."""
+        from .finalize import main as finalize_main
+        argv = self._split(line)
+        if argv is None:
+            return
+        if not argv:
+            self.stdout.write("Usage: finalize REPORT_DIR --recipient KEY [options]   (help finalize)\n")
+            return
+        self._run(argv, finalize_main)
+
+    def do_compare(self, line):
+        """compare BEFORE_DIR AFTER_DIR [-o FILE.md]
+    Compare two reports of the same target: problems fixed, new, still present, risk changed.
+    Example: compare reports/192.168.1.50_20261001-1000 reports/192.168.1.50_20261020-1600
+    Same as the zsra-compare command."""
+        from .compare import main as compare_main
+        argv = self._split(line)
+        if argv is None:
+            return
+        if len(argv) < 2:
+            self.stdout.write("Usage: compare BEFORE_DIR AFTER_DIR [-o FILE.md]   (help compare)\n")
+            return
+        self._run(argv, compare_main)
+
+    def do_inventory(self, line):
+        """inventory FILE [--yes] [-- OPTIONS FOR EVERY MACHINE]
+    Assess several machines: FILE has one zsra command line per machine (# for comments). One authorisation
+    for all, one machine after the other, summary table sorted from the worst. Example:
+      inventory hosts.txt -- --skip clamav
+    Same as the zsra-inventory command."""
+        from .inventory import main as inventory_main
+        argv = self._split(line)
+        if argv is None:
+            return
+        if not argv:
+            self.stdout.write("Usage: inventory FILE [-- OPTIONS]   (help inventory)\n")
+            return
+        head = argv[:argv.index("--")] if "--" in argv else argv   # after "--" the options go to every machine
+        if not self._has_out_dir(head):
+            argv = [argv[0], "--out-dir", self.out_dir] + argv[1:]
+        self._run(argv, inventory_main)
 
     def do_local(self, line):
         """local [options]
