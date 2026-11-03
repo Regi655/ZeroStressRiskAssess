@@ -1,0 +1,117 @@
+RTNETLINK answers: Invalid argument
+WARNING: The following suspicious files and directories were found:
+/usr/lib/debug/.build-id
+/usr/lib/jvm/.java-1.21.0-openjdk-amd64.jinfo
+/usr/lib/libreoffice/share/.registry
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/digest_time/.htaccess
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/digest_time/.htpasswd
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/digest/.htaccess
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/digest/.htpasswd
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/digest_anon/.htaccess
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/digest_anon/.htpasswd
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/noentry/.htaccess
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/digest_wrongrelm/.htaccess
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/digest_wrongrelm/.htpasswd
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/basic/file/.htaccess
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/basic/file/.htpasswd
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/basic/authz_owner/.htaccess
+/usr/lib/python3/dist-packages/fail2ban/tests/files/config/apache-auth/basic/authz_owner/.htpasswd
+
+WARNING: Possible Linux.Xor.DDoS installed:
+/tmp/147.0.7727.24/chromedriver/chromedriver-linux64/chromedriver
+/tmp/fakebin/apt-cache
+/tmp/fakebin/dpkg-query
+/tmp/work/bb/bin/busybox
+/tmp/work/deb/etc/init.d/vsftpd
+/tmp/work/deb/usr/share/bug/vsftpd
+/tmp/work/deb/usr/sbin/vsftpd
+/tmp/work/deb/usr/bin/vsftpdwho
+/tmp/work/civenv/lib/python3.13/site-packages/nacl/_sodium.abi3.so
+/tmp/work/civenv/lib/python3.13/site-packages/_cffi_backend.cpython-313-x86_64-linux-gnu.so
+/tmp/work/civenv/lib/python3.13/site-packages/bcrypt/_bcrypt.abi3.so
+/tmp/work/civenv/lib/python3.13/site-packages/cryptography/hazmat/bindings/_rust.abi3.so
+/tmp/work/civenv/lib/python3.13/site-packages/pip/_internal/__init__.py
+/tmp/work/civenv/bin/invoke
+/tmp/work/civenv/bin/pip3
+/tmp/work/civenv/bin/pip3.13
+/tmp/work/civenv/bin/cffi-gen-src
+/tmp/work/civenv/bin/pyflakes
+/tmp/work/civenv/bin/inv
+/tmp/work/civenv/bin/pip
+/tmp/work/lynis-src/extras/check-lynis.sh
+/tmp/work/lynis-src/extras/build-lynis.sh
+/tmp/work/lynis-src/.git/hooks/pre-applypatch.sample
+/tmp/work/lynis-src/.git/hooks/pre-push.sample
+/tmp/work/lynis-src/.git/hooks/sendemail-validate.sample
+/tmp/work/lynis-src/.git/hooks/fsmonitor-watchman.sample
+/tmp/work/lynis-src/.git/hooks/commit-msg.sample
+/tmp/work/lynis-src/.git/hooks/post-update.sample
+/tmp/work/lynis-src/.git/hooks/update.sample
+/tmp/work/lynis-src/.git/hooks/pre-commit.sample
+/tmp/work/lynis-src/.git/hooks/pre-rebase.sample
+/tmp/work/lynis-src/.git/hooks/prepare-commit-msg.sample
+/tmp/work/lynis-src/.git/hooks/push-to-checkout.sample
+/tmp/work/lynis-src/.git/hooks/pre-merge-commit.sample
+/tmp/work/lynis-src/.git/hooks/pre-receive.sample
+/tmp/work/lynis-src/.git/hooks/applypatch-msg.sample
+/tmp/work/lynis-src/lynis
+/tmp/fk/ps
+
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+WARNING: Output from ifpromisc:
+/proc/1/fd/0: Permission denied
+/proc/1/fd/1: Permission denied
+/proc/1/fd/2: Permission denied
+/proc/1/fd/3: Permission denied
+/proc/1/fd/4: Permission denied
+/proc/1/fd/5: Permission denied
+/proc/1/fd/6: Permission denied
+/proc/1/fd/7: Permission denied
+/proc/1/fd/8: Permission denied
+/proc/1/fd/9: Permission denied
+/proc/1/fd/10: Permission denied
+/proc/1/fd/11: Permission denied
+/proc/1/fd/12: Permission denied
+/proc/1/fd/13: Permission denied
+/proc/1/fd/14: Permission denied
+/proc/1/fd/15: Permission denied
+/proc/1/fd/19: Permission denied
+/proc/1/fd/20: Permission denied
+/proc/1/fd/21: Permission denied
+
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+WARNING: chkutmp output: 
+failed opening utmp !
+

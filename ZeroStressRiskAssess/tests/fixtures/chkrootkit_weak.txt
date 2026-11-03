@@ -1,0 +1,8 @@
+The following suspicious files and directories were found:
+/usr/lib/modules/5.15.0-198-generic/vdso/.build-id
+
+INFECTED: Possible Malicious Linux.Xor.DDoS installed
+/tmp/prepare_weak_target.sh
+INFECTED PORTS: ( 31337)
+Output from ifpromisc:
+ens160: PACKET SNIFFER(/usr/lib/systemd/systemd-networkd[851])

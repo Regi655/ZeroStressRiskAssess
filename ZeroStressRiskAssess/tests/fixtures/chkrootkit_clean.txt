@@ -1,0 +1,5 @@
+The following suspicious files and directories were found:
+/usr/lib/modules/5.15.0-198-generic/vdso/.build-id
+
+Output from ifpromisc:
+ens160: PACKET SNIFFER(/usr/lib/systemd/systemd-networkd[851])

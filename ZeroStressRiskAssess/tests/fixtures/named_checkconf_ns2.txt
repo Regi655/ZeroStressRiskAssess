@@ -1,0 +1,27 @@
+options {
+	directory "/var/cache/bind";
+	listen-on  {
+		"any";
+	};
+	listen-on-v6  {
+		"none";
+	};
+	version "non disponibile";
+	rate-limit {
+		responses-per-second 10;
+	};
+	recursion no;
+	allow-query {
+		"any";
+	};
+	allow-transfer  {
+		"none";
+	};
+};
+zone "isp-lab.example" {
+	type secondary;
+	file "/var/cache/bind/db.isp-lab.example";
+	primaries {
+		172.28.7.11;
+	};
+};

@@ -1,0 +1,64 @@
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+WARNING: chkdirs: Possible LKM Trojan installed:
+WARNING: It seems you are using BTRFS, if this is true chkdirs can't help you to find hidden files/dirs
+
+WARNING: Output from ifpromisc:
+/proc/24/fd/0: Permission denied
+/proc/24/fd/1: Permission denied
+/proc/24/fd/2: Permission denied
+/proc/24/fd/3: Permission denied
+/proc/24/fd/5: Permission denied
+/proc/24/fd/6: Permission denied
+/proc/35/fd/0: Permission denied
+/proc/35/fd/1: Permission denied
+/proc/35/fd/2: Permission denied
+/proc/35/fd/3: Permission denied
+/proc/35/fd/4: Permission denied
+/proc/35/fd/5: Permission denied
+/proc/35/fd/7: Permission denied
+/proc/35/fd/8: Permission denied
+/proc/35/fd/10: Permission denied
+/proc/29042/fd/0: Permission denied
+/proc/29042/fd/1: Permission denied
+/proc/29042/fd/2: Permission denied
+/proc/29042/fd/3: Permission denied
+/proc/29042/fd/4: Permission denied
+/proc/29042/fd/5: Permission denied
+/proc/29042/fd/6: Permission denied
+
+RTNETLINK answers: Invalid argument
+RTNETLINK answers: Invalid argument
+WARNING: chkutmp output: 
+failed opening utmp !

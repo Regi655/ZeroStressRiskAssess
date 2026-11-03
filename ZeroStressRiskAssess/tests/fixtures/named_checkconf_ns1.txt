@@ -1,0 +1,32 @@
+options {
+	directory "/var/cache/bind";
+	listen-on  {
+		"any";
+	};
+	listen-on-v6  {
+		"none";
+	};
+	allow-recursion {
+		"any";
+	};
+	dnssec-validation auto;
+	recursion yes;
+	allow-query {
+		"any";
+	};
+	allow-transfer  {
+		"any";
+	};
+};
+zone "isp-lab.example" {
+	type primary;
+	file "/etc/bind/zones/db.isp-lab.example";
+	also-notify {
+		172.28.7.12;
+	};
+	notify yes;
+};
+zone "cliente1.example" {
+	type primary;
+	file "/etc/bind/zones/db.cliente1.example";
+};

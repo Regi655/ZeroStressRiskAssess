@@ -1,0 +1,8 @@
+Reading package lists...
+Calculating upgrade...
+The following packages have been kept back:
+  fwupd libnetplan0 netplan.io sosreport
+The following packages will be upgraded:
+  apparmor apt
+Inst apparmor [3.0.4-2ubuntu2.3] (3.0.4-2ubuntu2.4 Ubuntu:22.04/jammy-updates [amd64])
+Inst apt [2.4.13] (2.4.14 Ubuntu:22.04/jammy-updates [amd64])

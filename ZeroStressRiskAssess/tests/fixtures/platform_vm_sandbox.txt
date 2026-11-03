@@ -1,0 +1,10 @@
+CONTAINER|0
+HV|1
+VIRT|docker
+VENDOR|
+CHASSIS|
+BAT|0
+ROOT|/dev/vda
+CHAIN|NAME="vda" TYPE="disk" FSTYPE=""
+EFI|no
+LOCK|

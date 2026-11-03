@@ -1,0 +1,5 @@
+debian-sys-maint	localhost	Y	Y
+mysql.infoschema	localhost	N	N
+mysql.session	localhost	Y	N
+mysql.sys	localhost	N	N
+root	localhost	Y	Y

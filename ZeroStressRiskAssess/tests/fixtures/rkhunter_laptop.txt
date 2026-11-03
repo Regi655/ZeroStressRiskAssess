@@ -1,0 +1,27 @@
+Warning: The file properties have changed:
+         File: /usr/sbin/sshd
+         Current hash: fb87e88b1019acdb88e912734166fc7072414f332d179ecd3c370c8fe757da64
+         Stored hash : b5955817a5c6efae0ed00a93033a92cdb73c401712dff996876048391cd12371
+         Current inode: 23607321    Stored inode: 23614053
+         Current file modification time: 1788768000 (07-Sep-2026 10:00:00)
+         Stored file modification time : 1788201385 (31-Aug-2026 20:36:25)
+Warning: The file '/usr/bin/mail' exists on the system, but it is not present in the 'rkhunter.dat' file.
+Warning: The file properties have changed:
+         File: /usr/bin/ssh
+         Current hash: c840f84ae4e895c489ab37ddb9c4dd4f9a4293f02f2f4223225f2ed7a3c63191
+         Stored hash : c6942676b14478f22ccad4b62c40033d18fae3212b5777fd6941aa6e4db1e183
+         Current inode: 23607324    Stored inode: 23613332
+         Current file modification time: 1788768000 (07-Sep-2026 10:00:00)
+         Stored file modification time : 1788201385 (31-Aug-2026 20:36:25)
+Warning: The command '/usr/bin/lwp-request' has been replaced by a script: /usr/bin/lwp-request: Perl script text executable
+Warning: The file '/usr/bin/bsd-mailx' exists on the system, but it is not present in the 'rkhunter.dat' file.
+Warning: The following suspicious (large) shared memory segments have been found:
+         Process: /usr/lib/vmware/bin/appLoader    PID: 5486    Owner: user    Size: 4.0MB (configured size allowed: 1.0MB)
+         Process: /usr/lib/vmware/bin/appLoader    PID: 5486    Owner: user    Size: 8.0MB (configured size allowed: 1.0MB)
+         Process: /usr/libexec/mutter-x11-frames    PID: 4047    Owner: user    Size: 32MB (configured size allowed: 1.0MB)
+Warning: User 'clamav' has been added to the passwd file.
+Warning: Group 'clamav' has been added to the group file.
+Warning: The SSH configuration option 'PermitRootLogin' has not been set.
+         The default value may be 'yes', to allow root access.
+Warning: Hidden file found: /etc/.resolv.conf.systemd-resolved.bak: ASCII text
+Warning: Hidden file found: /etc/.updated: ASCII text

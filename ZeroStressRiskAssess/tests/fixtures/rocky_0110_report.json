@@ -1,0 +1,2239 @@
+{
+  "meta": {
+    "target": "172.28.6.10",
+    "timestamp": "20261014-111255",
+    "os": "Rocky Linux 9.8 (Blue Onyx)",
+    "auth": "publickey",
+    "version": "0.11.0",
+    "kernel": "7.0.0-38-generic",
+    "arch": "x86_64",
+    "stage": "DRAFT to be reviewed - do NOT distribute in this form",
+    "masked_secrets": {}
+  },
+  "summary": {
+    "score": 87,
+    "level": "CRITICAL",
+    "counts": {
+      "critical": 3,
+      "high": 12,
+      "medium": 6,
+      "low": 23,
+      "info": 25
+    },
+    "issues": {
+      "critical": 2,
+      "high": 10,
+      "medium": 4,
+      "low": 23,
+      "info": 0
+    }
+  },
+  "issues": [
+    {
+      "title": "SSH login without password (accounts: guest)",
+      "severity": "critical",
+      "key": "ssh-nopass",
+      "evidence": [
+        "F011",
+        "F016"
+      ],
+      "scans": [
+        "accounts",
+        "sshd"
+      ],
+      "fix": "PermitEmptyPasswords no in sshd_config and a password (or passwd -l to lock it) for every account without a password.",
+      "refs": {
+        "mitre": [
+          "T1078.003",
+          "T1021.004"
+        ],
+        "cis": [
+          "5.2"
+        ]
+      },
+      "id": "P01"
+    },
+    {
+      "title": "SSH private key readable by others: /home/dev/.ssh/id_ed25519",
+      "severity": "critical",
+      "key": null,
+      "evidence": [
+        "F021"
+      ],
+      "scans": [
+        "permissions"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1552.004"
+        ],
+        "cis": [
+          "3.3"
+        ]
+      },
+      "id": "P02"
+    },
+    {
+      "title": "Anonymous FTP with file upload by anyone",
+      "severity": "high",
+      "key": "ftp-anon",
+      "evidence": [
+        "F002",
+        "F024",
+        "F025",
+        "F034"
+      ],
+      "scans": [
+        "ftp",
+        "nmap",
+        "permissions"
+      ],
+      "fix": "In vsftpd: anonymous_enable=NO. If anonymous FTP is really needed: anon_upload_enable=NO, anon_mkdir_write_enable=NO and directories at 755.",
+      "refs": {
+        "mitre": [
+          "T1105"
+        ],
+        "cis": [
+          "4.8",
+          "3.3"
+        ]
+      },
+      "id": "P03"
+    },
+    {
+      "title": "Defaults !authenticate: sudo never asks for a password",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F013"
+      ],
+      "scans": [
+        "sudoers"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1548.003"
+        ],
+        "cis": [
+          "5.4"
+        ]
+      },
+      "id": "P04"
+    },
+    {
+      "title": "SSH allows direct root login with a password (PermitRootLogin yes)",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F017"
+      ],
+      "scans": [
+        "sshd"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1110",
+          "T1021.004"
+        ],
+        "cis": [
+          "5.4"
+        ]
+      },
+      "id": "P05"
+    },
+    {
+      "title": "Home directory of 'dev2' writable by everyone",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F022"
+      ],
+      "scans": [
+        "permissions"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": [
+          "3.3"
+        ]
+      },
+      "id": "P06"
+    },
+    {
+      "title": "World-writable directory without sticky bit",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F023"
+      ],
+      "scans": [
+        "permissions"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": [
+          "3.3"
+        ]
+      },
+      "id": "P07"
+    },
+    {
+      "title": "Credentials file writable by everyone",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F026"
+      ],
+      "scans": [
+        "permissions"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1552.001"
+        ],
+        "cis": [
+          "3.3"
+        ]
+      },
+      "id": "P08"
+    },
+    {
+      "title": "No active firewall and services reachable besides SSH: 21/tcp",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F029"
+      ],
+      "scans": [
+        "firewall"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": [
+          "4.4"
+        ]
+      },
+      "id": "P09"
+    },
+    {
+      "title": "34 security updates not installed (including critical components: glibc, glibc-common, glibc-minimal-langpack, openssl, systemd)",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F038"
+      ],
+      "scans": [
+        "updates"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1068",
+          "T1190"
+        ],
+        "cis": [
+          "7.3"
+        ]
+      },
+      "id": "P10"
+    },
+    {
+      "title": "klogd is not running, which could lead to missing kernel messages in log files",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F045"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P11"
+    },
+    {
+      "title": "ClamAV: Eicar-Signature",
+      "severity": "high",
+      "key": null,
+      "evidence": [
+        "F068"
+      ],
+      "scans": [
+        "clamav"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": [
+          "10.1"
+        ]
+      },
+      "id": "P12"
+    },
+    {
+      "title": "Network-exposed service on port 21 (ftp vsftpd 3.0.5)",
+      "severity": "medium",
+      "key": "port:21",
+      "evidence": [
+        "F001",
+        "F035"
+      ],
+      "scans": [
+        "ftp",
+        "nmap"
+      ],
+      "fix": "FTP sends passwords in clear text: replace it with SFTP (already provided by SSH) or enable FTPS (ssl_enable=YES in vsftpd); if it is not needed, disable it.",
+      "refs": {
+        "mitre": [
+          "T1040"
+        ],
+        "cis": [
+          "4.8",
+          "3.10"
+        ]
+      },
+      "id": "P13"
+    },
+    {
+      "title": "UID 1001 shared by several accounts",
+      "severity": "medium",
+      "key": null,
+      "evidence": [
+        "F008"
+      ],
+      "scans": [
+        "accounts"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1078.003"
+        ],
+        "cis": [
+          "5.4"
+        ]
+      },
+      "id": "P14"
+    },
+    {
+      "title": "'dev' can run any command as root",
+      "severity": "medium",
+      "key": null,
+      "evidence": [
+        "F014"
+      ],
+      "scans": [
+        "sudoers"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1548.003"
+        ],
+        "cis": [
+          "5.4"
+        ]
+      },
+      "id": "P15"
+    },
+    {
+      "title": "SSH accepts password authentication (PasswordAuthentication yes)",
+      "severity": "medium",
+      "key": null,
+      "evidence": [
+        "F018"
+      ],
+      "scans": [
+        "sshd"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1110"
+        ],
+        "cis": [
+          "6.5"
+        ]
+      },
+      "id": "P16"
+    },
+    {
+      "title": "Account files modified in the last 7 days",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F012"
+      ],
+      "scans": [
+        "accounts"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P17"
+    },
+    {
+      "title": "SSH: X11Forwarding enabled",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F019"
+      ],
+      "scans": [
+        "sshd"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P18"
+    },
+    {
+      "title": "SSH: MaxAuthTries 10 (above the default of 6)",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F020"
+      ],
+      "scans": [
+        "sshd"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P19"
+    },
+    {
+      "title": "FTP: local users not confined to their home directory (chroot_local_user=NO)",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F036"
+      ],
+      "scans": [
+        "ftp"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": [
+          "3.3"
+        ]
+      },
+      "id": "P20"
+    },
+    {
+      "title": "Automatic security updates not enabled",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F040"
+      ],
+      "scans": [
+        "updates"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [
+          "T1068",
+          "T1190"
+        ],
+        "cis": [
+          "7.3"
+        ]
+      },
+      "id": "P21"
+    },
+    {
+      "title": "Consider hardening system services [Run '/usr/bin/systemd-analyze security SERVICE' for each service]",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F047"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P22"
+    },
+    {
+      "title": "If not required, consider explicit disabling of core dump in /etc/security/limits.conf file",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F048"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P23"
+    },
+    {
+      "title": "Check PAM configuration, add rounds if applicable and expire passwords to encrypt with new values",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F049"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P24"
+    },
+    {
+      "title": "When possible set expire dates for all password protected accounts",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F050"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P25"
+    },
+    {
+      "title": "Configure minimum password age in /etc/login.defs (+1 similar)",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F051"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P26"
+    },
+    {
+      "title": "To decrease the impact of a full /home file system, place /home on a separate partition (+2 similar)",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F052"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P27"
+    },
+    {
+      "title": "Disable drivers like USB storage when not used, to prevent unauthorized storage or data theft",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F053"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P28"
+    },
+    {
+      "title": "Disable drivers like firewire storage when not used, to prevent unauthorized storage or data theft",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F054"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P29"
+    },
+    {
+      "title": "Check DNS configuration for the dns domain name",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F055"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P30"
+    },
+    {
+      "title": "Determine if protocol 'dccp' is really needed on this system (+3 similar)",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F056"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P31"
+    },
+    {
+      "title": "Check if any syslog daemon is running and correctly configured.",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F057"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P32"
+    },
+    {
+      "title": "Add a legal banner to /etc/issue, to warn unauthorized users",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F058"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P33"
+    },
+    {
+      "title": "Add legal banner to /etc/issue.net, to warn unauthorized users",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F059"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P34"
+    },
+    {
+      "title": "Enable process accounting",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F060"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P35"
+    },
+    {
+      "title": "Enable sysstat to collect accounting (no results)",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F061"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P36"
+    },
+    {
+      "title": "Install a file integrity tool to monitor changes to critical and sensitive files",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F062"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P37"
+    },
+    {
+      "title": "Determine if automation tools are present for system management",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F063"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P38"
+    },
+    {
+      "title": "Harden compilers like restricting access to root user only",
+      "severity": "low",
+      "key": null,
+      "evidence": [
+        "F064"
+      ],
+      "scans": [
+        "lynis"
+      ],
+      "fix": "",
+      "refs": {
+        "mitre": [],
+        "cis": []
+      },
+      "id": "P39"
+    }
+  ],
+  "tools": [
+    {
+      "tool": "lynis",
+      "package": "-",
+      "action": "portable from the controller (version 3.1.8): no package installed, temporary directory deleted after the scan"
+    },
+    {
+      "tool": "epel-release",
+      "package": "epel-release",
+      "action": "installato (repo extra)"
+    },
+    {
+      "tool": "chkrootkit",
+      "package": "chkrootkit",
+      "action": "NOT available in the repositories of Rocky Linux 9.8 (Blue Onyx)"
+    },
+    {
+      "tool": "clamav",
+      "package": "clamav",
+      "action": "to be installed",
+      "to": "1.4.6-1.el9"
+    },
+    {
+      "tool": "clamav",
+      "package": "clamav-freshclam",
+      "action": "to be installed",
+      "to": "1.4.6-1.el9"
+    },
+    {
+      "tool": "smartmontools",
+      "package": "smartmontools",
+      "action": "to be installed",
+      "to": "1:7.2-10.el9"
+    },
+    {
+      "tool": "*",
+      "package": "clamav,clamav-freshclam,smartmontools",
+      "action": "installazione rc=0",
+      "detail": ""
+    },
+    {
+      "tool": "*",
+      "package": "clamav,clamav-filesystem,clamav-freshclam,clamav-lib,dbus-libs,dnf-plugins-core,epel-release,python3-dateutil,python3-dbus,python3-dnf-plugins-core,python3-six,python3-systemd,smartmontools",
+      "action": "rimozione rc=0",
+      "detail": ""
+    }
+  ],
+  "scans": [
+    {
+      "name": "nmap",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "medium",
+          "title": "Open port 21/tcp: ftp vsftpd 3.0.5",
+          "detail": "FTP: credenziali in chiaro",
+          "id": "F001",
+          "fp": "db9389da661e",
+          "refs": {
+            "mitre": [],
+            "cis": [
+              "4.8"
+            ]
+          },
+          "issue": "P13"
+        },
+        {
+          "severity": "medium",
+          "title": "Anonymous FTP allowed (21/tcp)",
+          "detail": "Anyone can read the published files without a password. Check that this is intended and that there is no confidential data (in vsftpd: anonymous_enable=NO). The file list cannot be read from here (PASV failed: 550 Permission denied.), so it is NOT possible to tell whether there are writable directories: the ftp check verifies it from the inside.",
+          "id": "F002",
+          "fp": "aa849b3cedc5",
+          "refs": {
+            "mitre": [
+              "T1105"
+            ],
+            "cis": [
+              "4.8"
+            ]
+          },
+          "issue": "P03"
+        },
+        {
+          "severity": "info",
+          "title": "Open port 22/tcp: ssh OpenSSH 9.9",
+          "detail": "",
+          "id": "F003",
+          "fp": "07eadea9b392",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "nse": [
+          "ftp-anon",
+          "http-git",
+          "http-methods",
+          "ssl-cert",
+          "sslv2",
+          "ssl-dh-params",
+          "ssl-heartbleed",
+          "ssl-poodle",
+          "ssl-ccs-injection",
+          "smb2-security-mode",
+          "redis-info",
+          "memcached-info"
+        ],
+        "open_ports": [
+          {
+            "port": 21,
+            "proto": "tcp",
+            "service": "ftp vsftpd 3.0.5"
+          },
+          {
+            "port": 22,
+            "proto": "tcp",
+            "service": "ssh OpenSSH 9.9"
+          }
+        ]
+      },
+      "raw": "",
+      "duration": 1.4683592319488525
+    },
+    {
+      "name": "ssh_audit",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "ssh-audit: 10 DEFAULT algorithms flagged as improvable",
+          "detail": "diffie-hellman-group14-sha256, ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, ecdsa-sha2-nistp256, hmac-sha1, hmac-sha1-etm@openssh.com, hmac-sha2-256, hmac-sha2-512, umac-128@openssh.com. Hardening beyond the defaults (e.g. the ssh-audit.com guides): useful, but not a wrong configuration.",
+          "id": "F004",
+          "fp": "fb1eed75ee00",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        },
+        {
+          "severity": "info",
+          "title": "SSH server: SSH-2.0-OpenSSH_9.9",
+          "detail": "",
+          "id": "F005",
+          "fp": "a2d71d349488",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "ports": [
+          22
+        ]
+      },
+      "raw": "",
+      "duration": 1.0049552917480469
+    },
+    {
+      "name": "resources",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Target is a container: CPU, load, RAM and temperatures are those of the host",
+          "detail": "Detected from /.dockerenv or /run/.containerenv.",
+          "id": "F006",
+          "fp": "3b91901282bb",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        },
+        {
+          "severity": "info",
+          "title": "CPU 2.1% | RAM 41.8% | swap 10.2% | load 1.16 0.50 0.57 1/1683 1175",
+          "detail": "",
+          "id": "F007",
+          "fp": "89b64a3f45a8",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "cpu_pct": 2.1,
+        "cpu_sustained": 1.5,
+        "cpu_samples": [
+          2.3,
+          1.5,
+          2.5
+        ],
+        "ram_pct": 41.8,
+        "swap_pct": 10.2,
+        "disks": [
+          {
+            "mount": "/etc/hosts",
+            "use_pct": 47
+          }
+        ],
+        "temps": [
+          {
+            "sensor": "acpitz_0",
+            "celsius": 45.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Composite)",
+            "celsius": 36.85,
+            "max": 76.85,
+            "crit": 79.85,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "pch_cometlake_4",
+            "celsius": 56.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "iwlwifi_1_6",
+            "celsius": 47.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Package id 0)",
+            "celsius": 46.0,
+            "max": 100.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 0)",
+            "celsius": 45.0,
+            "max": 100.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 1)",
+            "celsius": 43.0,
+            "max": 100.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 2)",
+            "celsius": 44.0,
+            "max": 100.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 3)",
+            "celsius": 45.0,
+            "max": 100.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 4)",
+            "celsius": 45.0,
+            "max": 100.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 5)",
+            "celsius": 44.0,
+            "max": 100.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "zona termica acpitz",
+            "celsius": 45.0,
+            "max": 110.0,
+            "crit": 120.0,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica SEN2",
+            "celsius": 40.05,
+            "max": 95.05,
+            "crit": 95.05,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica INT3400 Thermal",
+            "celsius": 20.0,
+            "max": null,
+            "crit": null,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica SEN3",
+            "celsius": 38.05,
+            "max": 95.05,
+            "crit": 95.05,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica pch_cometlake",
+            "celsius": 58.0,
+            "max": null,
+            "crit": 120.0,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica B0D4",
+            "celsius": 45.05,
+            "max": 92.05,
+            "crit": 92.05,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica iwlwifi_1",
+            "celsius": 47.0,
+            "max": null,
+            "crit": null,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica x86_pkg_temp",
+            "celsius": 45.0,
+            "max": null,
+            "crit": null,
+            "kind": "thermal"
+          }
+        ],
+        "loadavg": "1.16 0.50 0.57 1/1683 1175",
+        "cpu_cores": 12,
+        "uptime": "up 1 hour, 51 minutes",
+        "container": true,
+        "top_cpu": "PID USER     %CPU %MEM COMMAND\n     99 dev       0.1  0.0 sshd-session\n      1 root      0.0  0.0 sshd\n      9 root      0.0  0.0 vsftpd\n     96 root      0.0  0.0 sshd-session\n   1458 dev       0.0  0.0 bash"
+      },
+      "raw": "",
+      "duration": 4.140400648117065
+    },
+    {
+      "name": "accounts",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "medium",
+          "title": "UID 1001 shared by several accounts",
+          "detail": "dev, dev2",
+          "id": "F008",
+          "fp": "12ef6b03dd42",
+          "refs": {
+            "mitre": [
+              "T1078.003"
+            ],
+            "cis": [
+              "5.4"
+            ]
+          },
+          "issue": "P14"
+        },
+        {
+          "severity": "info",
+          "title": "Standard RHEL system accounts with GID 0: sync, shutdown, halt, operator",
+          "detail": "Created this way by the installation (sync, shutdown, halt, operator) with their stock shell.",
+          "id": "F009",
+          "fp": "da273ab6c12a",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        },
+        {
+          "severity": "info",
+          "title": "Users with interactive login: guest, dev, dev2",
+          "detail": "",
+          "id": "F010",
+          "fp": "0c065b440621",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        },
+        {
+          "severity": "critical",
+          "title": "Account 'guest' with an empty password in /etc/shadow",
+          "detail": "Login without a password.",
+          "id": "F011",
+          "fp": "5c7ae56ebe15",
+          "refs": {
+            "mitre": [
+              "T1078.003"
+            ],
+            "cis": [
+              "5.2"
+            ]
+          },
+          "issue": "P01"
+        },
+        {
+          "severity": "low",
+          "title": "Account files modified in the last 7 days",
+          "detail": "/etc/passwd, /etc/shadow, /etc/group, /etc/gshadow",
+          "id": "F012",
+          "fp": "31c59ae7f874",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P17"
+        }
+      ],
+      "data": {
+        "interactive_users": [
+          "guest",
+          "dev",
+          "dev2"
+        ]
+      },
+      "raw": "",
+      "duration": 0.6192405223846436
+    },
+    {
+      "name": "sudoers",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "Defaults !authenticate: sudo never asks for a password",
+          "detail": "/etc/sudoers.d/90-lab: Defaults:dev !authenticate",
+          "id": "F013",
+          "fp": "9786144a3caf",
+          "refs": {
+            "mitre": [
+              "T1548.003"
+            ],
+            "cis": [
+              "5.4"
+            ]
+          },
+          "issue": "P04"
+        },
+        {
+          "severity": "medium",
+          "title": "'dev' can run any command as root",
+          "detail": "/etc/sudoers.d/90-lab: dev = (ALL:ALL) ALL",
+          "id": "F014",
+          "fp": "8c0b2ed5764b",
+          "refs": {
+            "mitre": [
+              "T1548.003"
+            ],
+            "cis": [
+              "5.4"
+            ]
+          },
+          "issue": "P15"
+        },
+        {
+          "severity": "info",
+          "title": "Members of group wheel: none",
+          "detail": "",
+          "id": "F015",
+          "fp": "a4635270070a",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "rules_checked": 3
+      },
+      "raw": "",
+      "duration": 0.7590773105621338
+    },
+    {
+      "name": "sshd",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "critical",
+          "title": "SSH accepts empty passwords (PermitEmptyPasswords yes)",
+          "detail": "Anyone with a passwordless account can log in without a password.",
+          "id": "F016",
+          "fp": "b8035c40b897",
+          "refs": {
+            "mitre": [
+              "T1078.003",
+              "T1021.004"
+            ],
+            "cis": [
+              "5.2"
+            ]
+          },
+          "issue": "P01"
+        },
+        {
+          "severity": "high",
+          "title": "SSH allows direct root login with a password (PermitRootLogin yes)",
+          "detail": "Recommended: 'prohibit-password' or 'no'.",
+          "id": "F017",
+          "fp": "09508e7e4d08",
+          "refs": {
+            "mitre": [
+              "T1110",
+              "T1021.004"
+            ],
+            "cis": [
+              "5.4"
+            ]
+          },
+          "issue": "P05"
+        },
+        {
+          "severity": "medium",
+          "title": "SSH accepts password authentication (PasswordAuthentication yes)",
+          "detail": "Public keys only are recommended, especially when SSH is reachable from the Internet.",
+          "id": "F018",
+          "fp": "9251ad20883f",
+          "refs": {
+            "mitre": [
+              "T1110"
+            ],
+            "cis": [
+              "6.5"
+            ]
+          },
+          "issue": "P16"
+        },
+        {
+          "severity": "low",
+          "title": "SSH: X11Forwarding enabled",
+          "detail": "Useful only when remote graphical applications are needed.",
+          "id": "F019",
+          "fp": "784f1b7743ad",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P18"
+        },
+        {
+          "severity": "low",
+          "title": "SSH: MaxAuthTries 10 (above the default of 6)",
+          "detail": "",
+          "id": "F020",
+          "fp": "1ae912ec961c",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P19"
+        }
+      ],
+      "data": {
+        "effective": true
+      },
+      "raw": "",
+      "duration": 0.3291780948638916
+    },
+    {
+      "name": "permissions",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "critical",
+          "title": "SSH private key readable by others: /home/dev/.ssh/id_ed25519",
+          "detail": "mode=644",
+          "id": "F021",
+          "fp": "a03114171525",
+          "refs": {
+            "mitre": [
+              "T1552.004"
+            ],
+            "cis": [
+              "3.3"
+            ]
+          },
+          "issue": "P02"
+        },
+        {
+          "severity": "high",
+          "title": "Home directory of 'dev2' writable by everyone",
+          "detail": "/home/dev2",
+          "id": "F022",
+          "fp": "b807009db355",
+          "refs": {
+            "mitre": [],
+            "cis": [
+              "3.3"
+            ]
+          },
+          "issue": "P06"
+        },
+        {
+          "severity": "high",
+          "title": "World-writable directory without sticky bit",
+          "detail": "/opt/app",
+          "id": "F023",
+          "fp": "a0521dde8885",
+          "refs": {
+            "mitre": [],
+            "cis": [
+              "3.3"
+            ]
+          },
+          "issue": "P07"
+        },
+        {
+          "severity": "high",
+          "title": "World-writable directory without sticky bit",
+          "detail": "/srv/ftp/pub",
+          "id": "F024",
+          "fp": "18923221a7e7",
+          "refs": {
+            "mitre": [],
+            "cis": [
+              "3.3"
+            ]
+          },
+          "issue": "P03"
+        },
+        {
+          "severity": "high",
+          "title": "World-writable directory without sticky bit",
+          "detail": "/srv/ftp/upload",
+          "id": "F025",
+          "fp": "46e8c042c456",
+          "refs": {
+            "mitre": [],
+            "cis": [
+              "3.3"
+            ]
+          },
+          "issue": "P03"
+        },
+        {
+          "severity": "high",
+          "title": "Credentials file writable by everyone",
+          "detail": "/opt/app/db.env",
+          "id": "F026",
+          "fp": "a41859f2d998",
+          "refs": {
+            "mitre": [
+              "T1552.001"
+            ],
+            "cis": [
+              "3.3"
+            ]
+          },
+          "issue": "P08"
+        }
+      ],
+      "data": {
+        "suid_sgid_total": 14,
+        "file_capabilities": 0
+      },
+      "raw": "",
+      "duration": 3.3966104984283447
+    },
+    {
+      "name": "persistence",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "authorized SSH keys for 'dev' (1)",
+          "detail": "/home/dev/.ssh/authorized_keys: 256 SHA256:0YE0MzG8GjDbaoQ+Pgr9KbBXnLRRF5RBKEaSxxwFWbw riskassess-lab (ED25519)",
+          "id": "F027",
+          "fp": "3f87fc95a44b",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "cron_files_with_entries": 0,
+        "timers": 2
+      },
+      "raw": "",
+      "duration": 2.1246187686920166
+    },
+    {
+      "name": "integrity",
+      "status": "ok",
+      "findings": [],
+      "data": {
+        "checked_commands": 24,
+        "procs_proc": 8,
+        "procs_ps": 6
+      },
+      "raw": "",
+      "duration": 5.189627408981323
+    },
+    {
+      "name": "services",
+      "status": "ok",
+      "findings": [],
+      "data": {
+        "units_checked": 5,
+        "listening": "Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                       \nudp   UNCONN 0      0         127.0.0.11:49068      0.0.0.0:*                                 \ntcp   LISTEN 0      4096      127.0.0.11:33519      0.0.0.0:*                                 \ntcp   LISTEN 0      32           0.0.0.0:21         0.0.0.0:*    users:((\"vsftpd\",pid=9,fd=3))\ntcp   LISTEN 0      128          0.0.0.0:22         0.0.0.0:*    users:((\"sshd\",pid=1,fd=7))  \ntcp   LISTEN 0      128             [::]:22            [::]:*    users:((\"sshd\",pid=1,fd=8))"
+      },
+      "raw": "",
+      "duration": 1.0788307189941406
+    },
+    {
+      "name": "listeners",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Listening on the network: 21/tcp vsftpd, 22/tcp sshd",
+          "detail": "",
+          "id": "F028",
+          "fp": "1922048acbd9",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "listeners": [
+          {
+            "port": "21/tcp",
+            "addr": "0.0.0.0",
+            "pid": 9,
+            "process": "vsftpd",
+            "exe": "/usr/sbin/vsftpd",
+            "user": "root",
+            "loopback": false
+          },
+          {
+            "port": "22/tcp",
+            "addr": "0.0.0.0",
+            "pid": 1,
+            "process": "sshd",
+            "exe": "/usr/sbin/sshd",
+            "user": "root",
+            "loopback": false
+          }
+        ]
+      },
+      "raw": "",
+      "duration": 0.6864151954650879
+    },
+    {
+      "name": "firewall",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "No active firewall and services reachable besides SSH: 21/tcp",
+          "detail": "No rules in ufw/firewalld/nftables/iptables.",
+          "id": "F029",
+          "fp": "a56cab3b28b1",
+          "refs": {
+            "mitre": [],
+            "cis": [
+              "4.4"
+            ]
+          },
+          "issue": "P09"
+        }
+      ],
+      "data": {
+        "active": []
+      },
+      "raw": "",
+      "duration": 0.7619349956512451
+    },
+    {
+      "name": "hardening",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Target is a container: kernel parameters, auditing and clock belong to the host",
+          "detail": "The values read are those of the host: check them there.",
+          "id": "F030",
+          "fp": "dff7c8cc85bc",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "sysctl": {
+          "kernel.randomize_va_space": "2",
+          "fs.protected_symlinks": "1",
+          "fs.protected_hardlinks": "1",
+          "net.ipv4.conf.all.accept_source_route": "0",
+          "fs.protected_fifos": "1",
+          "fs.protected_regular": "2",
+          "fs.suid_dumpable": "2",
+          "kernel.kptr_restrict": "1",
+          "kernel.dmesg_restrict": "1",
+          "kernel.yama.ptrace_scope": "1",
+          "kernel.unprivileged_bpf_disabled": "2",
+          "net.ipv4.conf.all.accept_redirects": "0",
+          "net.ipv4.conf.all.send_redirects": "1",
+          "net.ipv4.tcp_syncookies": "1",
+          "net.ipv4.conf.all.rp_filter": "2",
+          "net.ipv4.ip_forward": "1"
+        },
+        "container": true
+      },
+      "raw": "",
+      "duration": 0.3748633861541748
+    },
+    {
+      "name": "containers",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Docker not present",
+          "detail": "",
+          "id": "F031",
+          "fp": "64f65cd8ba3a",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 0.31195926666259766
+    },
+    {
+      "name": "dns",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "No DNS server listening on port 53",
+          "detail": "",
+          "id": "F032",
+          "fp": "dcd301db116a",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 0.15739107131958008
+    },
+    {
+      "name": "mysql",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "No MySQL/MariaDB server running",
+          "detail": "",
+          "id": "F033",
+          "fp": "70fcd111da04",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 0.14246249198913574
+    },
+    {
+      "name": "ftp",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "FTP: the anonymous user can WRITE to the server",
+          "detail": "anon_upload_enable=YES, anon_mkdir_write_enable=YES with write_enable=YES; writable directories under /srv/ftp: /srv/ftp/pub, /srv/ftp/upload. Anyone can upload files without a password: a drop point for malware or illegal material in the name of the server owner.",
+          "id": "F034",
+          "fp": "74b4943e27a8",
+          "refs": {
+            "mitre": [
+              "T1105"
+            ],
+            "cis": [
+              "3.3",
+              "4.8"
+            ]
+          },
+          "issue": "P03"
+        },
+        {
+          "severity": "medium",
+          "title": "FTP: system users with clear-text passwords (local_enable=YES, ssl_enable=NO)",
+          "detail": "The passwords travelling unencrypted are those of the system accounts: whoever intercepts the traffic can then also log in via SSH. Enable ssl_enable or use SFTP.",
+          "id": "F035",
+          "fp": "6dfc14c2f12c",
+          "refs": {
+            "mitre": [
+              "T1040"
+            ],
+            "cis": [
+              "3.10"
+            ]
+          },
+          "issue": "P13"
+        },
+        {
+          "severity": "low",
+          "title": "FTP: local users not confined to their home directory (chroot_local_user=NO)",
+          "detail": "Via FTP they can browse the whole readable file system.",
+          "id": "F036",
+          "fp": "d21689099eea",
+          "refs": {
+            "mitre": [],
+            "cis": [
+              "3.3"
+            ]
+          },
+          "issue": "P20"
+        },
+        {
+          "severity": "info",
+          "title": "vsftpd: configuration read from /etc/vsftpd/vsftpd.conf",
+          "detail": "",
+          "id": "F037",
+          "fp": "ff3af28ae3fd",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "config": "/etc/vsftpd/vsftpd.conf",
+        "anon_root": "/srv/ftp"
+      },
+      "raw": "",
+      "duration": 0.567183256149292
+    },
+    {
+      "name": "updates",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "34 security updates not installed (including critical components: glibc, glibc-common, glibc-minimal-langpack, openssl, systemd)",
+          "detail": "acl, attr, coreutils-single, curl-minimal, expat, gawk, glib2, glibc, glibc-common, glibc-minimal-langpack, gnutls, gzip, libacl, libarchive, libattr, libcurl-minimal, libevent, libgcrypt, libnghttp2, libsolv",
+          "id": "F038",
+          "fp": "93490aa81786",
+          "refs": {
+            "mitre": [
+              "T1068",
+              "T1190"
+            ],
+            "cis": [
+              "7.3"
+            ]
+          },
+          "issue": "P10"
+        },
+        {
+          "severity": "info",
+          "title": "Upgradable packages: 34, of which security: 34",
+          "detail": "",
+          "id": "F039",
+          "fp": "5dd7ae15f2ab",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        },
+        {
+          "severity": "low",
+          "title": "Automatic security updates not enabled",
+          "detail": "Recommended: unattended-upgrades (apt) or dnf-automatic (dnf).",
+          "id": "F040",
+          "fp": "1fdfb2690023",
+          "refs": {
+            "mitre": [
+              "T1068",
+              "T1190"
+            ],
+            "cis": [
+              "7.3"
+            ]
+          },
+          "issue": "P21"
+        }
+      ],
+      "data": {
+        "upgradable": 34,
+        "security": 34,
+        "security_named": [
+          "acl",
+          "attr",
+          "coreutils-single",
+          "curl-minimal",
+          "expat",
+          "gawk",
+          "glib2",
+          "glibc",
+          "glibc-common",
+          "glibc-minimal-langpack",
+          "gnutls",
+          "gzip",
+          "libacl",
+          "libarchive",
+          "libattr",
+          "libcurl-minimal",
+          "libevent",
+          "libgcrypt",
+          "libnghttp2",
+          "libsolv",
+          "libtasn1",
+          "libxml2",
+          "openssl",
+          "openssl-libs",
+          "p11-kit",
+          "p11-kit-trust",
+          "pam",
+          "sqlite-libs",
+          "systemd",
+          "systemd-libs",
+          "systemd-pam",
+          "systemd-rpm-macros",
+          "tar",
+          "vim-minimal"
+        ],
+        "new_from_security": [],
+        "held_back": 0,
+        "automatic_updates": false
+      },
+      "raw": "",
+      "duration": 3.360700845718384
+    },
+    {
+      "name": "disks",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "No disk with SMART detected (normal on virtual machines)",
+          "detail": "",
+          "id": "F041",
+          "fp": "f9c66e55dd1c",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "smart_devices": []
+      },
+      "raw": "",
+      "duration": 0.788745641708374
+    },
+    {
+      "name": "platform",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Target is a container: disk encryption and Secure Boot concern the host",
+          "detail": "",
+          "id": "F042",
+          "fp": "7f227eb1f1e5",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "kind": "container",
+        "root_encrypted": false,
+        "efi": false,
+        "secure_boot": null
+      },
+      "raw": "",
+      "duration": 0.18548345565795898
+    },
+    {
+      "name": "lynis",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Multiple accounts found with same UID (already covered by the 'accounts' check)",
+          "detail": "AUTH-9208",
+          "id": "F043",
+          "fp": "c3927b13c07e",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        },
+        {
+          "severity": "info",
+          "title": "Found accounts without password (already covered by the 'accounts' check)",
+          "detail": "AUTH-9283",
+          "id": "F044",
+          "fp": "ea1ef1b952fd",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        },
+        {
+          "severity": "high",
+          "title": "klogd is not running, which could lead to missing kernel messages in log files",
+          "detail": "LOGG-2138",
+          "id": "F045",
+          "fp": "6cbbef0b481e",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P11"
+        },
+        {
+          "severity": "info",
+          "title": "Lynis hardening index: 59/100",
+          "detail": "Share of Lynis checks passed: a configuration indicator, not a measure of risk.",
+          "id": "F046",
+          "fp": "811929ad8793",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        },
+        {
+          "severity": "low",
+          "title": "Consider hardening system services [Run '/usr/bin/systemd-analyze security SERVICE' for each service]",
+          "detail": "BOOT-5264",
+          "id": "F047",
+          "fp": "220729ece5e6",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P22"
+        },
+        {
+          "severity": "low",
+          "title": "If not required, consider explicit disabling of core dump in /etc/security/limits.conf file",
+          "detail": "KRNL-5820",
+          "id": "F048",
+          "fp": "3bbd88910bd3",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P23"
+        },
+        {
+          "severity": "low",
+          "title": "Check PAM configuration, add rounds if applicable and expire passwords to encrypt with new values",
+          "detail": "AUTH-9229",
+          "id": "F049",
+          "fp": "c524c8d796c7",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P24"
+        },
+        {
+          "severity": "low",
+          "title": "When possible set expire dates for all password protected accounts",
+          "detail": "AUTH-9282",
+          "id": "F050",
+          "fp": "0d3b1d8ed7db",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P25"
+        },
+        {
+          "severity": "low",
+          "title": "Configure minimum password age in /etc/login.defs (+1 similar)",
+          "detail": "AUTH-9286: Configure minimum password age in /etc/login.defs; Configure maximum password age in /etc/login.defs",
+          "id": "F051",
+          "fp": "9c133ed9a6cf",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P26"
+        },
+        {
+          "severity": "low",
+          "title": "To decrease the impact of a full /home file system, place /home on a separate partition (+2 similar)",
+          "detail": "FILE-6310: To decrease the impact of a full /home file system, place /home on a separate partition; To decrease the impact of a full /tmp file system, place /tmp on a separate partition; To decrease the impact of a full /var file system, place /var on a separate partition",
+          "id": "F052",
+          "fp": "ccdff478b4be",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P27"
+        },
+        {
+          "severity": "low",
+          "title": "Disable drivers like USB storage when not used, to prevent unauthorized storage or data theft",
+          "detail": "USB-1000",
+          "id": "F053",
+          "fp": "2dd0f35d21db",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P28"
+        },
+        {
+          "severity": "low",
+          "title": "Disable drivers like firewire storage when not used, to prevent unauthorized storage or data theft",
+          "detail": "STRG-1846",
+          "id": "F054",
+          "fp": "286d2d7a5362",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P29"
+        },
+        {
+          "severity": "low",
+          "title": "Check DNS configuration for the dns domain name",
+          "detail": "NAME-4028",
+          "id": "F055",
+          "fp": "4d0e1ddb48ac",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P30"
+        },
+        {
+          "severity": "low",
+          "title": "Determine if protocol 'dccp' is really needed on this system (+3 similar)",
+          "detail": "NETW-3200: Determine if protocol 'dccp' is really needed on this system; Determine if protocol 'sctp' is really needed on this system; Determine if protocol 'rds' is really needed on this system; Determine if protocol 'tipc' is really needed on this system",
+          "id": "F056",
+          "fp": "9e8e7e4569af",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P31"
+        },
+        {
+          "severity": "low",
+          "title": "Check if any syslog daemon is running and correctly configured.",
+          "detail": "LOGG-2130",
+          "id": "F057",
+          "fp": "add20e27310a",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P32"
+        },
+        {
+          "severity": "low",
+          "title": "Add a legal banner to /etc/issue, to warn unauthorized users",
+          "detail": "BANN-7126",
+          "id": "F058",
+          "fp": "bbb8cf0c2ccd",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P33"
+        },
+        {
+          "severity": "low",
+          "title": "Add legal banner to /etc/issue.net, to warn unauthorized users",
+          "detail": "BANN-7130",
+          "id": "F059",
+          "fp": "ff9c9fd9e87d",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P34"
+        },
+        {
+          "severity": "low",
+          "title": "Enable process accounting",
+          "detail": "ACCT-9622",
+          "id": "F060",
+          "fp": "351da3ec42cb",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P35"
+        },
+        {
+          "severity": "low",
+          "title": "Enable sysstat to collect accounting (no results)",
+          "detail": "ACCT-9626",
+          "id": "F061",
+          "fp": "20ba1a9f9b0a",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P36"
+        },
+        {
+          "severity": "low",
+          "title": "Install a file integrity tool to monitor changes to critical and sensitive files",
+          "detail": "FINT-4350",
+          "id": "F062",
+          "fp": "25dd0f227908",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P37"
+        },
+        {
+          "severity": "low",
+          "title": "Determine if automation tools are present for system management",
+          "detail": "TOOL-5002",
+          "id": "F063",
+          "fp": "fee4465fd06a",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P38"
+        },
+        {
+          "severity": "low",
+          "title": "Harden compilers like restricting access to root user only",
+          "detail": "HRDN-7222",
+          "id": "F064",
+          "fp": "6ec59ca7dd96",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          },
+          "issue": "P39"
+        },
+        {
+          "severity": "info",
+          "title": "7 Lynis suggestions not repeated: already covered by our own checks",
+          "detail": "AUTH-9328 (hardening), FIRE-4590 (firewall), SSH-7408 (sshd), ACCT-9628 (hardening), HOME-9304 (permissions), HOME-9306 (permissions), KRNL-6000 (hardening)",
+          "id": "F065",
+          "fp": "e02ea83ee1af",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "mode": "portable (copied from the controller, no package installed)",
+        "target_logs": "none: temporary directory deleted",
+        "lynis_version": "3.1.8",
+        "hardening_index": 59,
+        "suggestions_total": 40
+      },
+      "raw": "[ Lynis 3.1.8 ]\n\n################################################################################\n  Lynis comes with ABSOLUTELY NO WARRANTY. This is free software, and you are\n  welcome to redistribute it under the terms of the GNU General Public License.\n  See the LICENSE file for details about using this software.\n\n  2007-2025, CISOfy - https://cisofy.com/lynis/\n  Enterprise support available (compliance, plugins, interface and tools)\n################################################################################\n\n\n[+] Initializing program\n------------------------------------\n- Detecting OS...  [ DONE ]\n- Checking profiles... [ DONE ]\n\n  ---------------------------------------------------\n  Program version:           3.1.8\n  Operating system:          Linux\n  Operating system name:     Rocky Linux\n  Operating system version:  9.8\n  End-of-life:               NO\n  Kernel version:            7.0.0\n  Hardware platform:         x86_64\n  Hostname:                  target-rocky\n  ---------------------------------------------------\n  Profiles:                  /tmp/riskassess-lynis.hKNwXJ/lynis/default.prf\n  Log file:                  /tmp/riskassess-lynis.hKNwXJ/lynis.log\n  Report file:               /tmp/riskassess-lynis.hKNwXJ/report.dat\n  Report version:            1.0\n  Plugin directory:          ./plugins\n  ---------------------------------------------------\n  Auditor:                   [Not Specified]\n  Language:                  en\n  Test category:             all\n  Test group:                all\n  ---------------------------------------------------\n- Program update status...  [ SKIPPED ]\n\n[+] System tools\n------------------------------------\n- Scanning available tools...\n- Checking system binaries...\n\n[+] Plugins (phase 1)\n------------------------------------\nNote: plugins have more extensive tests and may take several minutes to complete\n \n- Plugin: pam\n- Plugin: systemd\n  [WARNING]: Test PLGN-0010 had a long execution: 10.290769 seconds\nSystem has not been booted with systemd as init system (PID 1). Can't operate.\nFailed to connect to bus: Host is down\nSystem has not been booted with systemd as init system (PID 1). Can't operate.\nFailed to connect to bus: Host is down\n\n[+] Boot and services\n------------------------------------\n\n=================================================================\n\n  Exception found!\n\n  Function/test:  [BOOT-5104:002]\n  Message:        No data found in /proc/1/cmdline\n\n  Help improving the Lynis community with your feedback!\n\n  Steps:\n  - Ensure you are running the latest version (./lynis update check)\n  - If so, create a GitHub issue at https://github.com/CISOfy/lynis\n  - Include relevant parts of the log file or configuration file\n\n  Thanks!\n\n=================================================================\n\n- Service Manager [ UNKNOWN ]\n- Checking UEFI boot [ DISABLED ]\n- Boot loader [ NONE FOUND ]\nSystem has not been booted with systemd as init system (PID 1). Can't operate.\nFailed to connect to bus: Host is down\n- Check running services (systemctl) [ DONE ]\nResult: found 0 running services\n- Check enabled services at boot (systemctl) [ DONE ]\nResult: found 6 enabled services\n- Check startup files (permissions) [ OK ]\n- Running 'systemd-analyze security'\nUnit name (exposure value) and predicate\n--------------------------------\nSystem has not been booted with systemd as init system (PID 1). Can't operate.\nFailed to connect to bus: Host is down\n\n[+] Kernel\n------------------------------------\n- Checking default runlevel [ runlevel 5 ]\n- Checking CPU support (NX/PAE)\nCPU support: PAE and/or NoeXecute supported [ FOUND ]\n- Checking kernel version and release [ DONE ]\n- Checking Linux kernel configuration file [ NOT FOUND ]\n- Checking core dumps configuration\n- configuration in /etc/profile [ DEFAULT ]\n- 'hard' configuration in /etc/security/limits.conf [ DEFAULT ]\n- 'soft' configuration in /etc/security/limits.conf [ DEFAULT ]\n- Checking setuid core dumps configuration [ PROTECTED ]\n- Check if reboot is needed [ UNKNOWN ]\n\n[+] Memory and Processes\n------------------------------------\n- Checking /proc/meminfo [ FOUND ]\n- Searching for dead/zombie processes [ NOT FOUND ]\n- Searching for IO waiting processes [ NOT FOUND ]\n- Search prelink tooling [ NOT FOUND ]\n\n[+] Users, Groups and Authentication\n------------------------------------\n- Administrator accounts [ OK ]\n- Unique UIDs [ WARNING ]\n- Consistency of group files (grpck) [ OK ]\n- Unique group IDs [ OK ]\n- Unique group names [ OK ]\n- Password file consistency [ OK ]\n- Password hashing methods [ SUGGESTION ]\n- Password hashing rounds (minimum) [ CONFIGURED ]\n- Query system users (non daemons) [ DONE ]\n- NIS+ authentication support [ NOT ENABLED ]\n- NIS authentication support [ NOT ENABLED ]\n- Sudoers file(s) [ FOUND ]\n- Permissions for directory: /etc/sudoers.d [ OK ]\n- Permissions for: /etc/sudoers [ OK ]\n- Permissions for: /etc/sudoers.d/90-lab [ OK ]\n- PAM password strength tools [ OK ]\n- PAM configuration file (pam.conf) [ NOT FOUND ]\n- PAM configuration files (pam.d) [ FOUND ]\n- PAM modules [ FOUND ]\n- LDAP module in PAM [ NOT FOUND ]\n- Accounts without expire date [ SUGGESTION ]\n- Accounts without password [ WARNING ]\n- Locked accounts [ OK ]\n- Checking user password aging (minimum) [ DISABLED ]\n- User password aging (maximum) [ DISABLED ]\n- Checking expired passwords [ OK ]\n- Checking Linux single user mode authentication [ OK ]\n- Determining default umask\n- umask (/etc/profile) [ NOT FOUND ]\n- umask (/etc/login.defs) [ SUGGESTION ]\n- LDAP authentication support [ NOT ENABLED ]\n- Logging failed login attempts [ DISABLED ]\n\n[+] Kerberos\n------------------------------------\n- Check for Kerberos KDC and principals [ NOT FOUND ]\n\n[+] Shells\n------------------------------------\n- Checking shells from /etc/shells\nResult: found 4 shells (valid shells: 4).\n- Session timeout settings/tools [ NONE ]\n- Checking default umask values\n- Checking default umask in /etc/bashrc [ WEAK ]\n- Checking default umask in /etc/csh.cshrc [ WEAK ]\n- Checking default umask in /etc/profile [ NONE ]\n\n[+] File systems\n------------------------------------\n- Checking mount points\n- Checking /home mount point [ SUGGESTION ]\n- Checking /tmp mount point [ SUGGESTION ]\n- Checking /var mount point [ SUGGESTION ]\n- Testing /proc mount (hidepid) [ SUGGESTION ]\n- Checking for old files in /tmp [ OK ]\n- Checking /tmp sticky bit [ OK ]\n- Checking /var/tmp sticky bit [ OK ]\n- ACL support root file system [ ENABLED ]\n- Total without nodev:28 noexec:27 nosuid:21 ro or noexec (W^X): 10 of total 38\n\n[+] USB Devices\n------------------------------------\n- Checking usb-storage driver (modprobe config) [ NOT DISABLED ]\n- Checking USB devices authorization [ ENABLED ]\n- Checking USBGuard [ NOT FOUND ]\n\n[+] Storage\n------------------------------------\n- Checking firewire ohci driver (modprobe config) [ NOT DISABLED ]\n\n[+] NFS\n------------------------------------\n- Check running NFS daemon [ NOT FOUND ]\n\n[+] Name services\n------------------------------------\n- Checking search domains [ FOUND ]\n- Checking /etc/resolv.conf options [ FOUND ]\n- Searching DNS domain name [ UNKNOWN ]\n- Checking /etc/hosts\n- Duplicate entries in hosts file [ NONE ]\n- Presence of configured hostname in /etc/hosts [ FOUND ]\n- Hostname mapped to localhost [ NOT FOUND ]\n- Localhost mapping to IP address [ OK ]\n\n[+] Ports and packages\n------------------------------------\n- Searching package managers\n- Searching DNF package manager [ FOUND ]\n- Querying DNF package manager\n- Using DNF to find vulnerable packages [ NONE ]\n- Checking package audit tool [ INSTALLED ]\nFound: dnf\n\n[+] Networking\n------------------------------------\n- Checking IPv6 configuration [ ENABLED ]\nConfiguration method [ AUTO ]\nIPv6 only [ NO ]\n- Checking configured nameservers\n- Testing nameservers\nNameserver: 127.0.0.11 [ SKIPPED ]\n- Minimal of 2 responsive nameservers [ SKIPPED ]\n- Getting listening ports (TCP/UDP) [ DONE ]\n- Checking promiscuous interfaces [ OK ]\n- Checking status DHCP client [ NOT ACTIVE ]\n- Checking for ARP monitoring software [ NOT FOUND ]\n- Uncommon network protocols [ 0 ]\n\n[+] Printers and Spools\n------------------------------------\n- Checking cups daemon [ NOT FOUND ]\n- Checking lp daemon [ NOT RUNNING ]\n\n[+] Software: e-mail and messaging\n------------------------------------\n\n[+] Software: firewalls\n------------------------------------\n- Checking iptables kernel module [ NOT FOUND ]\n- Checking host based firewall [ NOT ACTIVE ]\n\n[+] Software: webserver\n------------------------------------\n- Checking Apache [ NOT FOUND ]\n- Checking nginx [ NOT FOUND ]\n\n[+] SSH Support\n------------------------------------\n- Checking running SSH daemon [ FOUND ]\n- Searching SSH configuration [ FOUND ]\n- OpenSSH option: AllowTcpForwarding [ SUGGESTION ]\n- OpenSSH option: ClientAliveCountMax [ SUGGESTION ]\n- OpenSSH option: ClientAliveInterval [ OK ]\n- OpenSSH option: FingerprintHash [ OK ]\n- OpenSSH option: GatewayPorts [ OK ]\n- OpenSSH option: IgnoreRhosts [ OK ]\n- OpenSSH option: LoginGraceTime [ OK ]\n- OpenSSH option: LogLevel [ SUGGESTION ]\n- OpenSSH option: MaxAuthTries [ SUGGESTION ]\n- OpenSSH option: MaxSessions [ SUGGESTION ]\n- OpenSSH option: PermitRootLogin [ SUGGESTION ]\n- OpenSSH option: PermitUserEnvironment [ OK ]\n- OpenSSH option: PermitTunnel [ OK ]\n- OpenSSH option: Port [ SUGGESTION ]\n- OpenSSH option: PrintLastLog [ OK ]\n- OpenSSH option: StrictModes [ OK ]\n- OpenSSH option: TCPKeepAlive [ SUGGESTION ]\n- OpenSSH option: UseDNS [ OK ]\n- OpenSSH option: X11Forwarding [ SUGGESTION ]\n- OpenSSH option: AllowAgentForwarding [ SUGGESTION ]\n- OpenSSH option: AllowUsers [ NOT FOUND ]\n- OpenSSH option: AllowGroups [ NOT FOUND ]\n\n[+] SNMP Support\n------------------------------------\n- Checking running SNMP daemon [ NOT FOUND ]\n\n[+] Databases\n------------------------------------\nNo database engines found\n\n[+] LDAP Services\n------------------------------------\n- Checking OpenLDAP instance [ NOT FOUND ]\n\n[+] PHP\n------------------------------------\n- Checking PHP [ NOT FOUND ]\n\n[+] Squid Support\n------------------------------------\n- Checking running Squid daemon [ NOT FOUND ]\n\n[+] Logging and files\n------------------------------------\n- Checking for a running log daemon [ WARNING ]\n- Checking Syslog-NG status [ NOT FOUND ]\n- Checking systemd journal status [ NOT FOUND ]\n- Checking Metalog status [ NOT FOUND ]\n- Checking RSyslog status [ NOT FOUND ]\n- Checking RFC 3195 daemon status [ NOT FOUND ]\n- Checking klogd [ NOT FOUND ]\n- Checking minilogd instances [ NOT FOUND ]\n- Checking wazuh-agent daemon status [ NOT FOUND ]\n- Checking logrotate presence [ OK ]\n- Checking log directories (static list) [ DONE ]\n- Checking open log files [ SKIPPED ]\n\n[+] Insecure services\n------------------------------------\n- Installed inetd package [ NOT FOUND ]\n- Installed xinetd package [ OK ]\n- xinetd status [ NOT ACTIVE ]\n- Installed rsh client package [ OK ]\n- Installed rsh server package [ OK ]\n- Installed telnet client package [ OK ]\n- Installed telnet server package [ NOT FOUND ]\n- Checking NIS client installation [ OK ]\n- Checking NIS server installation [ OK ]\n- Checking TFTP client installation [ OK ]\n- Checking TFTP server installation [ OK ]\n\n[+] Banners and identification\n------------------------------------\n- /etc/issue [ FOUND ]\n- /etc/issue contents [ WEAK ]\n- /etc/issue.net [ FOUND ]\n- /etc/issue.net contents [ WEAK ]\n\n[+] Scheduled tasks\n------------------------------------\n- Checking crontab and cronjob files [ DONE ]\n\n[+] Accounting\n------------------------------------\n- Checking accounting information [ NOT FOUND ]\n- Checking sysstat accounting data [ NOT FOUND ]\n- Checking auditd [ NOT FOUND ]\n\n[+] Time and Synchronization\n------------------------------------\n\n[+] Cryptography\n------------------------------------\n- Checking for expired SSL certificates [0/151] [ NONE ]\n  [WARNING]: Test CRYP-7902 had a long execution: 12.705804 seconds\n- Kernel entropy is sufficient [ YES ]\n- HW RNG & rngd [ NO ]\n- SW prng [ NO ]\n- MOR variable not found [ WEAK ]\n\n[+] Virtualization\n------------------------------------\n\n[+] Containers\n------------------------------------\n\n[+] Security frameworks\n------------------------------------\n- Checking presence AppArmor [ NOT FOUND ]\n- Checking presence SELinux [ NOT FOUND ]\n- Checking presence TOMOYO Linux [ NOT FOUND ]\n- Checking presence grsecurity [ NOT FOUND ]\n- Checking for implemented MAC framework [ NONE ]\n\n[+] Software: file integrity\n------------------------------------\n- Checking file integrity tools\n- IMA/EVM (status) [ DISABLED ]\n- Checking presence integrity tool [ NOT FOUND ]\n\n[+] Software: System tooling\n------------------------------------\n- Checking automation tooling\n- Automation tooling [ NOT FOUND ]\n- Checking for IDS/IPS tooling [ NONE ]\n\n[+] Software: Malware\n------------------------------------\n- Checking ClamAV scanner [ FOUND ]\n- Malware software components [ FOUND ]\n- Active agent [ NOT FOUND ]\n- Rootkit scanner [ NOT FOUND ]\n\n[+] File Permissions\n------------------------------------\n- Starting file permissions check\nFile: /etc/group [ OK ]\nFile: /etc/group- [ OK ]\nFile: /etc/issue [ OK ]\nFile: /etc/issue.net [ OK ]\nFile: /etc/motd [ OK ]\nFile: /etc/passwd [ OK ]\nFile: /etc/passwd- [ OK ]\nFile: /etc/ssh/sshd_config [ OK ]\nDirectory: /root/.ssh [ OK ]\n\n[+] Home directories\n------------------------------------\n- Permissions of home directories [ WARNING ]\n- Ownership of home directories [ WARNING ]\n- Checking shell history files [ OK ]\n\n[+] Kernel Hardening\n------------------------------------\n- Comparing sysctl key pairs with scan profile\n- dev.tty.ldisc_autoload (exp: 0) [ OK ]\n- fs.protected_fifos (exp: 2) [ DIFFERENT ]\n- fs.protected_hardlinks (exp: 1) [ OK ]\n- fs.protected_regular (exp: 2) [ OK ]\n- fs.protected_symlinks (exp: 1) [ OK ]\n- fs.suid_dumpable (exp: 0) [ DIFFERENT ]\n- kernel.core_uses_pid (exp: 1) [ OK ]\n- kernel.ctrl-alt-del (exp: 0) [ OK ]\n- kernel.dmesg_restrict (exp: 1) [ OK ]\n- kernel.kptr_restrict (exp: 2) [ DIFFERENT ]\n- kernel.modules_disabled (exp: 1) [ DIFFERENT ]\n- kernel.perf_event_paranoid (exp: 2 3 4) [ OK ]\n- kernel.randomize_va_space (exp: 2) [ OK ]\n- kernel.sysrq (exp: 0) [ DIFFERENT ]\n- kernel.unprivileged_bpf_disabled (exp: 1) [ DIFFERENT ]\n- kernel.yama.ptrace_scope (exp: 1 2 3) [ OK ]\n- net.ipv4.conf.all.accept_redirects (exp: 0) [ OK ]\n- net.ipv4.conf.all.accept_source_route (exp: 0) [ OK ]\n- net.ipv4.conf.all.bootp_relay (exp: 0) [ OK ]\n- net.ipv4.conf.all.forwarding (exp: 0) [ DIFFERENT ]\n- net.ipv4.conf.all.log_martians (exp: 1) [ DIFFERENT ]\n- net.ipv4.conf.all.mc_forwarding (exp: 0) [ OK ]\n- net.ipv4.conf.all.proxy_arp (exp: 0) [ OK ]\n- net.ipv4.conf.all.rp_filter (exp: 1) [ DIFFERENT ]\n- net.ipv4.conf.all.send_redirects (exp: 0) [ DIFFERENT ]\n- net.ipv4.conf.default.accept_redirects (exp: 0) [ OK ]\n- net.ipv4.conf.default.accept_source_route (exp: 0) [ OK ]\n- net.ipv4.conf.default.log_martians (exp: 1) [ DIFFERENT ]\n- net.ipv4.icmp_echo_ignore_broadcasts (exp: 1) [ OK ]\n- net.ipv4.icmp_ignore_bogus_error_responses (exp: 1) [ OK ]\n- net.ipv4.tcp_syncookies (exp: 1) [ OK ]\n- net.ipv4.tcp_timestamps (exp: 0 1) [ OK ]\n- net.ipv6.conf.all.accept_redirects (exp: 0) [ DIFFERENT ]\n- net.ipv6.conf.all.accept_source_route (exp: 0) [ OK ]\n- net.ipv6.conf.default.accept_redirects (exp: 0) [ DIFFERENT ]\n- net.ipv6.conf.default.accept_source_route (exp: 0) [ OK ]\n\n[+] Hardening\n------------------------------------\n- Installed compiler(s) [ FOUND ]\n- Installed malware scanner [ FOUND ]\n- Non-native binary formats [ NOT FOUND ]\n\n[+] Custom tests\n------------------------------------\n- Running custom tests...  [ NONE ]\n\n[+] Plugins (phase 2)\n------------------------------------\n- Plugins (phase 2) [ DONE ]\n\n================================================================================\n\n  -[ Lynis 3.1.8 Results ]-\n\n  Warnings (3):\n  ----------------------------\n  ! Multiple accounts found with same UID [AUTH-9208] \n      https://cisofy.com/lynis/controls/AUTH-9208/\n\n  ! Found accounts without password [AUTH-9283] \n      https://cisofy.com/lynis/controls/AUTH-9283/\n\n  ! klogd is not running, which could lead to missing kernel messages in log files [LOGG-2138] \n      https://cisofy.com/lynis/controls/LOGG-2138/\n\n  Suggestions (40):\n  ----------------------------\n  * Consider hardening system services [BOOT-5264] \n    - Details  : Run '/usr/bin/systemd-analyze security SERVICE' for each service\n    - Related resources\n      * Article: Systemd features to secure service files: https://linux-audit.com/systemd/systemd-features-to-secure-units-and-services/\n      * Website: https://cisofy.com/lynis/controls/BOOT-5264/\n\n  * If not required, consider explicit disabling of core dump in /etc/security/limits.conf file [KRNL-5820] \n    - Related resources\n      * Article: Understand and configure core dumps on Linux: https://linux-audit.com/software/understand-and-configure-core-dumps-work-on-linux/\n      * Website: https://cisofy.com/lynis/controls/KRNL-5820/\n\n  * Check PAM configuration, add rounds if applicable and expire passwords to encrypt with new values [AUTH-9229] \n    - Related resources\n      * Article: Linux password security: hashing rounds: https://linux-audit.com/authentication/configure-the-minimum-password-length-on-linux-systems/\n      * Website: https://cisofy.com/lynis/controls/AUTH-9229/\n\n  * When possible set expire dates for all password protected accounts [AUTH-9282] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/AUTH-9282/\n\n  * Configure minimum password age in /etc/login.defs [AUTH-9286] \n    - Related resources\n      * Article: Configure minimum password length for Linux systems: https://linux-audit.com/configure-the-minimum-password-length-on-linux-systems/\n      * Website: https://cisofy.com/lynis/controls/AUTH-9286/\n\n  * Configure maximum password age in /etc/login.defs [AUTH-9286] \n    - Related resources\n      * Article: Configure minimum password length for Linux systems: https://linux-audit.com/configure-the-minimum-password-length-on-linux-systems/\n      * Website: https://cisofy.com/lynis/controls/AUTH-9286/\n\n  * Default umask in /etc/login.defs could be more strict like 027 [AUTH-9328] \n    - Related resources\n      * Article: Set default file permissions on Linux with umask: https://linux-audit.com/filesystems/file-permissions/set-default-file-permissions-with-umask/\n      * Website: https://cisofy.com/lynis/controls/AUTH-9328/\n\n  * To decrease the impact of a full /home file system, place /home on a separate partition [FILE-6310] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/FILE-6310/\n\n  * To decrease the impact of a full /tmp file system, place /tmp on a separate partition [FILE-6310] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/FILE-6310/\n\n  * To decrease the impact of a full /var file system, place /var on a separate partition [FILE-6310] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/FILE-6310/\n\n  * Disable drivers like USB storage when not used, to prevent unauthorized storage or data theft [USB-1000] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/USB-1000/\n\n  * Disable drivers like firewire storage when not used, to prevent unauthorized storage or data theft [STRG-1846] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/STRG-1846/\n\n  * Check DNS configuration for the dns domain name [NAME-4028] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/NAME-4028/\n\n  * Determine if protocol 'dccp' is really needed on this system [NETW-3200] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/NETW-3200/\n\n  * Determine if protocol 'sctp' is really needed on this system [NETW-3200] \n    - Related resources\n      * Website: https://cisofy.com/lynis/controls/NETW-3200/\n\n  * Determine if protocol 'rds' is really ",
+      "duration": 100.3541669845581
+    },
+    {
+      "name": "chkrootkit",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "chkrootkit not available on the target",
+          "detail": "",
+          "id": "F066",
+          "fp": "4b38387f7823",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 2.384185791015625e-05
+    },
+    {
+      "name": "rkhunter",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "rkhunter is not installed on the target: no rkhunter check",
+          "detail": "Install it while the system is in a known clean state, create the baseline then (rkhunter --propupd) and schedule periodic checks.",
+          "id": "F067",
+          "fp": "9a6f82daa678",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 2.1457672119140625e-05
+    },
+    {
+      "name": "clamav",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "ClamAV: Eicar-Signature",
+          "detail": "/srv/ftp/upload/eicar_test.txt",
+          "id": "F068",
+          "fp": "c3f85894f7b3",
+          "refs": {
+            "mitre": [],
+            "cis": [
+              "10.1"
+            ]
+          },
+          "issue": "P12"
+        },
+        {
+          "severity": "info",
+          "title": "ClamAV in quick mode: /home NOT scanned",
+          "detail": "Scanned only: /tmp /var/tmp /dev/shm /root /etc /usr/local /opt /var/www /srv. To include home directories use the standard mode (default) or --clamav-full.",
+          "id": "F069",
+          "fp": "58e1d90aa8cd",
+          "refs": {
+            "mitre": [],
+            "cis": []
+          }
+        }
+      ],
+      "data": {
+        "freshclam_rc": 0,
+        "mode": "rapida",
+        "excluded": [
+          "/\\.cache/",
+          "/node_modules/",
+          "/\\.git/objects/",
+          "/\\.local/share/Steam/",
+          "/\\.local/share/Trash/",
+          "/\\.cargo/registry/",
+          "/\\.npm/_cacache/",
+          "/snap/[^/]+/[^/]+/\\.cache/"
+        ],
+        "scanned_files": "362",
+        "infected_files": "1",
+        "time": "33.767 sec (0 m 33 s)"
+      },
+      "raw": "/srv/ftp/upload/eicar_test.txt: Eicar-Signature FOUND\n\n----------- SCAN SUMMARY -----------\nKnown viruses: 3628169\nEngine version: 1.4.6\nScanned directories: 169\nScanned files: 362\nInfected files: 1\nData scanned: 6.18 MB\nData read: 3.05 MB (ratio 2.03:1)\nTime: 33.767 sec (0 m 33 s)\nStart Date: 2026:10:14 09:17:06\nEnd Date:   2026:10:14 09:17:40",
+      "duration": 63.56656360626221
+    }
+  ]
+}

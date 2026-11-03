@@ -159,9 +159,13 @@ def start(out_dir, argv, secrets=None, kind="scan", confirm=True) -> Job:
     log = os.open(d / "log.txt", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     try:
         # Argument list, no shell: nothing typed in the form is ever interpreted as a command.
+        # The run starts in another directory: the package is found through PYTHONPATH even when it is used from a
+        # checkout without being installed with pip.
+        pkg_root = str(Path(__file__).resolve().parents[2])
+        env = dict(os.environ, PYTHONPATH=os.pathsep.join(p for p in (pkg_root, os.environ.get("PYTHONPATH")) if p))
         proc = subprocess.Popen([sys.executable, "-u", "-m", "zerostressriskassess.web.runner", str(d), *full],
                                 stdin=subprocess.PIPE, stdout=log, stderr=subprocess.STDOUT,
-                                start_new_session=True, cwd=str(out_dir.parent))
+                                start_new_session=True, cwd=str(out_dir.parent), env=env)
     finally:
         os.close(log)
     payload = json.dumps({k: v for k, v in (secrets or {}).items() if v}) + "\n" + ("" if confirm else "no\n")

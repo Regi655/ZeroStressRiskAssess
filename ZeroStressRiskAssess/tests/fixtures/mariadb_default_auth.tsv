@@ -1,0 +1,3 @@
+mariadb.sys	localhost	mysql_native_password	1	1
+root	localhost	mysql_native_password	0	0
+mysql	localhost	mysql_native_password	0	0

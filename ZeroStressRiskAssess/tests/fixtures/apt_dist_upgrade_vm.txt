@@ -1,0 +1,19 @@
+Reading package lists...
+Building dependency tree...
+Reading state information...
+Calculating upgrade...
+The following NEW packages will be installed:
+  jq libfwupd3 libjq1 libonig5 libprotobuf-c1 netplan-generator python3-netplan python3-packaging
+Inst apparmor [3.0.4-2ubuntu2.3] (3.0.4-2ubuntu2.4 Ubuntu:22.04/jammy-updates [amd64])
+Inst apt [2.4.13] (2.4.14 Ubuntu:22.04/jammy-updates [amd64])
+Inst fwupd [1.7.9-1~22.04.3] (2.0.20-1ubuntu2~22.04.2 Ubuntu:22.04/jammy-updates [amd64])
+Inst netplan.io [0.106.1-7ubuntu0.22.04.2] (0.107.1-3ubuntu0.22.04.5 Ubuntu:22.04/jammy-updates [amd64])
+Inst netplan-generator (0.107.1-3ubuntu0.22.04.5 Ubuntu:22.04/jammy-updates [amd64]) []
+Inst python3-netplan (0.107.1-3ubuntu0.22.04.5 Ubuntu:22.04/jammy-updates [amd64]) []
+Inst libfwupd3 (2.0.20-1ubuntu2~22.04.2 Ubuntu:22.04/jammy-updates [amd64])
+Inst libprotobuf-c1 (1.3.3-1ubuntu2.1 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst libonig5 (6.9.7.1-2build1 Ubuntu:22.04/jammy [amd64])
+Inst libjq1 (1.6-2.1ubuntu3.2 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst jq (1.6-2.1ubuntu3.2 Ubuntu:22.04/jammy-updates, Ubuntu:22.04/jammy-security [amd64])
+Inst python3-packaging (21.3-1 Ubuntu:22.04/jammy [all])
+Conf apparmor (3.0.4-2ubuntu2.4 Ubuntu:22.04/jammy-updates [amd64])

@@ -1,0 +1,8 @@
+udp   UNCONN 0      0          192.0.2.2:53         0.0.0.0:*    uid:104 ino:8458 sk:8 cgroup:/ <-> 
+udp   UNCONN 0      0          192.0.2.2:53         0.0.0.0:*    uid:104 ino:8459 sk:9 cgroup:/ <-> 
+udp   UNCONN 0      0          127.0.0.1:53         0.0.0.0:*    uid:104 ino:8453 sk:a cgroup:/ <-> 
+udp   UNCONN 0      0          127.0.0.1:53         0.0.0.0:*    uid:104 ino:8454 sk:b cgroup:/ <-> 
+tcp   LISTEN 0      10         127.0.0.1:53         0.0.0.0:*    uid:104 ino:8455 sk:c cgroup:/ <-> 
+tcp   LISTEN 0      10         127.0.0.1:53         0.0.0.0:*    uid:104 ino:8456 sk:d cgroup:/ <-> 
+tcp   LISTEN 0      10         192.0.2.2:53         0.0.0.0:*    uid:104 ino:8460 sk:10 cgroup:/ <->
+tcp   LISTEN 0      10         192.0.2.2:53         0.0.0.0:*    uid:104 ino:8461 sk:11 cgroup:/ <->

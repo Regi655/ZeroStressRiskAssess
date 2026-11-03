@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Tue Oct 13 19:34:35 2026 as: nmap -sV -&#45;version-light -Pn -T4 -p 443,445 -&#45;script ssl-enum-ciphers,ssl-dh-params,ssl-cert,sslv2,ssl-poodle,smb2-security-mode,smb-security-mode -oX /tmp/claude-0/-home-claude/1f3bfeea-2aeb-533f-b2f0-9908dcdad661/scratchpad/nse_tls.xml 192.0.2.2 -->
+<nmaprun scanner="nmap" args="nmap -sV -&#45;version-light -Pn -T4 -p 443,445 -&#45;script ssl-enum-ciphers,ssl-dh-params,ssl-cert,sslv2,ssl-poodle,smb2-security-mode,smb-security-mode -oX /tmp/claude-0/-home-claude/1f3bfeea-2aeb-533f-b2f0-9908dcdad661/scratchpad/nse_tls.xml 192.0.2.2" start="1791912875" startstr="Tue Oct 13 19:34:35 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="2" services="443,445"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1791912875" endtime="1791912882"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.2" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="443"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="https" tunnel="ssl" method="table" conf="3"/><script id="ssl-dh-params" output="&#xa;  VULNERABLE:&#xa;  Diffie-Hellman Key Exchange Insufficient Group Strength&#xa;    State: VULNERABLE&#xa;      Transport Layer Security (TLS) services that use Diffie-Hellman groups&#xa;      of insufficient strength, especially those using one of a few commonly&#xa;      shared groups, may be susceptible to passive eavesdropping attacks.&#xa;    Check results:&#xa;      WEAK DH GROUP 1&#xa;            Cipher Suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA&#xa;            Modulus Type: Safe prime&#xa;            Modulus Source: Unknown/Custom-generated&#xa;            Modulus Length: 1024&#xa;            Generator Length: 8&#xa;            Public Key Length: 1024&#xa;    References:&#xa;      https://weakdh.org&#xa;"><table key="NMAP-2">
+<elem key="title">Diffie-Hellman Key Exchange Insufficient Group Strength</elem>
+<elem key="state">VULNERABLE</elem>
+<table key="description">
+<elem>Transport Layer Security (TLS) services that use Diffie-Hellman groups&#xa;of insufficient strength, especially those using one of a few commonly&#xa;shared groups, may be susceptible to passive eavesdropping attacks.</elem>
+</table>
+<table key="check_results">
+<elem>WEAK DH GROUP 1&#xa;      Cipher Suite: TLS_DHE_RSA_WITH_AES_128_CBC_SHA&#xa;      Modulus Type: Safe prime&#xa;      Modulus Source: Unknown/Custom-generated&#xa;      Modulus Length: 1024&#xa;      Generator Length: 8&#xa;      Public Key Length: 1024</elem>
+</table>
+<table key="refs">
+<elem>https://weakdh.org</elem>
+</table>
+</table>
+</script><script id="ssl-enum-ciphers" output="&#xa;  TLSv1.0: &#xa;    ciphers: &#xa;      TLS_DHE_RSA_WITH_AES_128_CBC_SHA (dh 1024) - A&#xa;      TLS_RSA_WITH_AES_128_CBC_SHA (rsa 2048) - A&#xa;    compressors: &#xa;      NULL&#xa;    cipher preference: server&#xa;    warnings: &#xa;      Key exchange (dh 1024) of lower strength than certificate key&#xa;  TLSv1.1: &#xa;    ciphers: &#xa;      TLS_DHE_RSA_WITH_AES_128_CBC_SHA (dh 1024) - A&#xa;      TLS_RSA_WITH_AES_128_CBC_SHA (rsa 2048) - A&#xa;    compressors: &#xa;      NULL&#xa;    cipher preference: server&#xa;    warnings: &#xa;      Key exchange (dh 1024) of lower strength than certificate key&#xa;  TLSv1.2: &#xa;    ciphers: &#xa;      TLS_DHE_RSA_WITH_AES_128_CBC_SHA (dh 1024) - A&#xa;      TLS_RSA_WITH_AES_128_CBC_SHA (rsa 2048) - A&#xa;      TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256 (ecdh_x25519) - A&#xa;    compressors: &#xa;      NULL&#xa;    cipher preference: server&#xa;    warnings: &#xa;      Key exchange (dh 1024) of lower strength than certificate key&#xa;  least strength: A"><table key="TLSv1.0">
+<table key="ciphers">
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">dh 1024</elem>
+<elem key="name">TLS_DHE_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+</table>
+<table key="compressors">
+<elem>NULL</elem>
+</table>
+<elem key="cipher preference">server</elem>
+<table key="warnings">
+<elem>Key exchange (dh 1024) of lower strength than certificate key</elem>
+</table>
+</table>
+<table key="TLSv1.1">
+<table key="ciphers">
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">dh 1024</elem>
+<elem key="name">TLS_DHE_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+</table>
+<table key="compressors">
+<elem>NULL</elem>
+</table>
+<elem key="cipher preference">server</elem>
+<table key="warnings">
+<elem>Key exchange (dh 1024) of lower strength than certificate key</elem>
+</table>
+</table>
+<table key="TLSv1.2">
+<table key="ciphers">
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">dh 1024</elem>
+<elem key="name">TLS_DHE_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">rsa 2048</elem>
+<elem key="name">TLS_RSA_WITH_AES_128_CBC_SHA</elem>
+</table>
+<table>
+<elem key="strength">A</elem>
+<elem key="kex_info">ecdh_x25519</elem>
+<elem key="name">TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256</elem>
+</table>
+</table>
+<table key="compressors">
+<elem>NULL</elem>
+</table>
+<elem key="cipher preference">server</elem>
+<table key="warnings">
+<elem>Key exchange (dh 1024) of lower strength than certificate key</elem>
+</table>
+</table>
+<elem key="least strength">A</elem>
+</script><script id="ssl-cert" output="Subject: commonName=web.lab.example&#xa;Issuer: commonName=web.lab.example&#xa;Public Key type: rsa&#xa;Public Key bits: 2048&#xa;Signature Algorithm: sha256WithRSAEncryption&#xa;Not valid before: 2024-01-01T00:00:00&#xa;Not valid after:  2025-01-01T00:00:00&#xa;MD5:   c508:0cb5:d7ad:7d9a:9f6b:15bd:8be8:fc78&#xa;SHA-1: 04a5:c781:3545:6cb6:86af:0df2:d7a7:b5e3:5fbe:1019"><table key="subject">
+<elem key="commonName">web.lab.example</elem>
+</table>
+<table key="issuer">
+<elem key="commonName">web.lab.example</elem>
+</table>
+<table key="pubkey">
+<elem key="type">rsa</elem>
+<elem key="bits">2048</elem>
+<elem key="modulus">A39991C4DFC9C8009EBFE4783EFBD60D13BD2746831192FEE99C3FB8D398D26407307BE6A6F743AF2697422C9220273472E180F688ACC0BD0821A2277F2E554F19429846AE36B5A40752816FBCCDB7EA2FFBA949535A03710A599ACFB65E56B2908B59DE11A923A3A9789DA632FEAA069ABA5C00479731BCD52BB426C76583B7E939C3E2723E912F775DE5D0090ADF2EB1F68EAE70F2616CA65AA3FE7356B66D551A43CA91B27EF6DF673B2BF61E689233E896B10216D26AB61BA6C5900A07A08E32AE4BE49ED3693E919380CB797CC844B5F9C74E1DC5FC279F38583B042F2C1AA6B6934CC31E47216C00091788C53196929A828A6D71D272A9CB90714B9381</elem>
+<elem key="exponent">65537</elem>
+</table>
+<elem key="sig_algo">sha256WithRSAEncryption</elem>
+<table key="validity">
+<elem key="notBefore">2024-01-01T00:00:00</elem>
+<elem key="notAfter">2025-01-01T00:00:00</elem>
+</table>
+<elem key="md5">c5080cb5d7ad7d9a9f6b15bd8be8fc78</elem>
+<elem key="sha1">04a5c78135456cb686af0df2d7a7b5e35fbe1019</elem>
+<elem key="pem">-&#45;&#45;&#45;&#45;BEGIN CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;MIICrTCCAZWgAwIBAgIBATANBgkqhkiG9w0BAQsFADAaMRgwFgYDVQQDDA93ZWIu&#xa;bGFiLmV4YW1wbGUwHhcNMjQwMTAxMDAwMDAwWhcNMjUwMTAxMDAwMDAwWjAaMRgw&#xa;FgYDVQQDDA93ZWIubGFiLmV4YW1wbGUwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw&#xa;ggEKAoIBAQCjmZHE38nIAJ6/5Hg++9YNE70nRoMRkv7pnD+405jSZAcwe+am90Ov&#xa;JpdCLJIgJzRy4YD2iKzAvQghoid/LlVPGUKYRq42taQHUoFvvM236i/7qUlTWgNx&#xa;Clmaz7ZeVrKQi1neEakjo6l4naYy/qoGmrpcAEeXMbzVK7Qmx2WDt+k5w+JyPpEv&#xa;d13l0AkK3y6x9o6ucPJhbKZao/5zVrZtVRpDypGyfvbfZzsr9h5okjPolrECFtJq&#xa;thumxZAKB6COMq5L5J7TaT6Rk4DLeXzIRLX5x04dxfwnnzhYOwQvLBqmtpNMwx5H&#xa;IWwACReIxTGWkpqCim1x0nKpy5BxS5OBAgMBAAEwDQYJKoZIhvcNAQELBQADggEB&#xa;ACx/VDZ4ppBR0bU+Mx20G/ihw3BspGcI/Yw5+EgYweByanxvhb+N6+fWL86IUFa3&#xa;sJAvpQ08yDmcY3TL1fjSzEpvAYX38IF28miaH1+zvhRmQAhK+Ri9PQNpxbiMWOIn&#xa;HIGmqrIGIRm7xzgNE9wY2bVOrpLN/tCKZrpHzlb6Uom08Frgyn+m0Gu9VafSAWfG&#xa;rJtqIvywzYp2FDrKJdAagShyVJmCQk4KkSnyFp7A2qdkUTC1vOogtPWLJ8PXIA8W&#xa;diNOUkVpzKzR0guPWxmA3r/DYnvMJIf0HRCOGp56rEBTuA+8PL147Ut6H8IHTZM9&#xa;VsijY0lYAzztnpidhKnT+tw=&#xa;-&#45;&#45;&#45;&#45;END CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;</elem>
+</script></port>
+<port protocol="tcp" portid="445"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="netbios-ssn" product="Samba smbd" version="4.6.2" method="probed" conf="10"><cpe>cpe:/a:samba:samba:4.6.2</cpe></service></port>
+</ports>
+<hostscript><script id="smb2-security-mode" output="&#xa;  3:1:1: &#xa;    Message signing enabled but not required"><table key="3:1:1">
+<elem>Message signing enabled but not required</elem>
+</table>
+</script></hostscript><times srtt="192" rttvar="3802" to="100000"/>
+</host>
+<runstats><finished time="1791912882" timestr="Tue Oct 13 19:34:42 2026" summary="Nmap done at Tue Oct 13 19:34:42 2026; 1 IP address (1 host up) scanned in 6.72 seconds" elapsed="6.72" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

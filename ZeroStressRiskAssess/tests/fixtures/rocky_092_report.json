@@ -1,0 +1,949 @@
+{
+  "meta": {
+    "target": "172.28.6.10",
+    "timestamp": "20261013-205001",
+    "os": "Rocky Linux 9.8 (Blue Onyx)",
+    "auth": "password",
+    "version": "0.9.2",
+    "kernel": "7.2.9-2-cachyos",
+    "arch": "x86_64",
+    "stage": "DRAFT to be reviewed - do NOT distribute in this form",
+    "masked_secrets": {}
+  },
+  "summary": {
+    "score": 88,
+    "level": "CRITICAL",
+    "counts": {
+      "critical": 3,
+      "high": 10,
+      "medium": 6,
+      "low": 6,
+      "info": 17
+    }
+  },
+  "tools": [
+    {
+      "tool": "lynis",
+      "package": "-",
+      "action": "not needed (check skipped with --skip)"
+    },
+    {
+      "tool": "chkrootkit",
+      "package": "-",
+      "action": "not needed (check skipped with --skip)"
+    },
+    {
+      "tool": "clamav",
+      "package": "-",
+      "action": "not needed (check skipped with --skip)"
+    },
+    {
+      "tool": "smartmontools",
+      "package": "smartmontools",
+      "action": "to be installed",
+      "to": "1:7.2-10.el9"
+    },
+    {
+      "tool": "*",
+      "package": "smartmontools",
+      "action": "installazione rc=0",
+      "detail": ""
+    },
+    {
+      "tool": "*",
+      "package": "smartmontools",
+      "action": "rimozione rc=0",
+      "detail": ""
+    }
+  ],
+  "scans": [
+    {
+      "name": "nmap",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "medium",
+          "title": "Open port 21/tcp: ftp vsftpd 3.0.5",
+          "detail": "FTP: credenziali in chiaro",
+          "id": "F001",
+          "fp": "db9389da661e"
+        },
+        {
+          "severity": "medium",
+          "title": "Anonymous FTP allowed (21/tcp)",
+          "detail": "Anyone can read the published files without a password. Check that this is intended and that there is no confidential data (in vsftpd: anonymous_enable=NO). The file list cannot be read from here (PASV failed: 550 Permission denied.), so it is NOT possible to tell whether there are writable directories: the ftp check verifies it from the inside.",
+          "id": "F002",
+          "fp": "aa849b3cedc5"
+        },
+        {
+          "severity": "info",
+          "title": "Open port 22/tcp: ssh OpenSSH 9.9",
+          "detail": "",
+          "id": "F003",
+          "fp": "07eadea9b392"
+        }
+      ],
+      "data": {
+        "nse": [
+          "ftp-anon",
+          "http-git",
+          "http-methods",
+          "ssl-cert",
+          "sslv2",
+          "ssl-dh-params",
+          "ssl-heartbleed",
+          "ssl-poodle",
+          "ssl-ccs-injection",
+          "smb2-security-mode",
+          "redis-info",
+          "memcached-info"
+        ],
+        "open_ports": [
+          {
+            "port": 21,
+            "proto": "tcp",
+            "service": "ftp vsftpd 3.0.5"
+          },
+          {
+            "port": 22,
+            "proto": "tcp",
+            "service": "ssh OpenSSH 9.9"
+          }
+        ]
+      },
+      "raw": "",
+      "duration": 4.718028783798218
+    },
+    {
+      "name": "ssh_audit",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "ssh-audit: 15 DEFAULT algorithms flagged as improvable",
+          "detail": "curve25519-sha256, curve25519-sha256@libssh.org, diffie-hellman-group-exchange-sha256, diffie-hellman-group14-sha256, diffie-hellman-group16-sha512, diffie-hellman-group18-sha512, ecdh-sha2-nistp256, ecdh-sha2-nistp384, ecdh-sha2-nistp521, ecdsa-sha2-nistp256, hmac-sha1, hmac-sha1-etm@openssh.com, hmac-sha2-256, hmac-sha2-512, umac-128@openssh.com. Hardening beyond the defaults (e.g. the ssh-audit.com guides): useful, but not a wrong configuration.",
+          "id": "F004",
+          "fp": "274ab76acc1f"
+        },
+        {
+          "severity": "info",
+          "title": "SSH server: SSH-2.0-OpenSSH_9.9",
+          "detail": "",
+          "id": "F005",
+          "fp": "a2d71d349488"
+        }
+      ],
+      "data": {
+        "ports": [
+          22
+        ]
+      },
+      "raw": "",
+      "duration": 0.24187040328979492
+    },
+    {
+      "name": "resources",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Target is a container: CPU, load, RAM and temperatures are those of the host",
+          "detail": "Detected from /.dockerenv or /run/.containerenv.",
+          "id": "F006",
+          "fp": "3b91901282bb"
+        },
+        {
+          "severity": "info",
+          "title": "CPU 34.7% | RAM 47.4% | swap 20.1% | load 8.80 8.00 7.52 5/2338 8157",
+          "detail": "",
+          "id": "F007",
+          "fp": "d0c23fbef0ec"
+        }
+      ],
+      "data": {
+        "cpu_pct": 34.7,
+        "cpu_sustained": 34.0,
+        "cpu_samples": [
+          34.0,
+          34.8,
+          35.4
+        ],
+        "ram_pct": 47.4,
+        "swap_pct": 20.1,
+        "disks": [
+          {
+            "mount": "/etc/hosts",
+            "use_pct": 30
+          }
+        ],
+        "temps": [
+          {
+            "sensor": "acpitz",
+            "celsius": 16.8,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "acpitz",
+            "celsius": 27.8,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Composite)",
+            "celsius": 53.85,
+            "max": null,
+            "crit": 84.85,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Sensor 1)",
+            "celsius": 53.85,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Sensor 2)",
+            "celsius": 57.85,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 8)",
+            "celsius": 46.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 12)",
+            "celsius": 45.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 16)",
+            "celsius": 43.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Package id 0)",
+            "celsius": 49.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 20)",
+            "celsius": 45.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 24)",
+            "celsius": 46.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 0)",
+            "celsius": 42.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 28)",
+            "celsius": 46.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 36)",
+            "celsius": 42.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 37)",
+            "celsius": 42.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 38)",
+            "celsius": 43.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 39)",
+            "celsius": 42.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 4)",
+            "celsius": 43.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "iwlwifi_1",
+            "celsius": 30.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Composite)",
+            "celsius": 52.85,
+            "max": 79.85,
+            "crit": 84.85,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Composite)",
+            "celsius": 51.85,
+            "max": 81.85,
+            "crit": 84.85,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Sensor 1)",
+            "celsius": 51.85,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Sensor 2)",
+            "celsius": 57.85,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 38.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 51.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 48.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 50.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 50.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 42.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "jc42",
+            "celsius": 55.5,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "jc42",
+            "celsius": 57.625,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "jc42",
+            "celsius": 59.25,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "jc42",
+            "celsius": 57.125,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "r8169_0_700:00",
+            "celsius": 51.5,
+            "max": 120.0,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "zona termica acpitz",
+            "celsius": 16.8,
+            "max": 19.8,
+            "crit": 20.8,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica acpitz",
+            "celsius": 27.8,
+            "max": null,
+            "crit": 105.0,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica x86_pkg_temp",
+            "celsius": 50.0,
+            "max": null,
+            "crit": null,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica iwlwifi_1",
+            "celsius": 30.0,
+            "max": null,
+            "crit": null,
+            "kind": "thermal"
+          }
+        ],
+        "loadavg": "8.80 8.00 7.52 5/2338 8157",
+        "cpu_cores": 20,
+        "uptime": "up 4 hours, 56 minutes",
+        "container": true,
+        "top_cpu": "PID USER     %CPU %MEM COMMAND\n      1 root      0.0  0.0 sshd\n      9 root      0.0  0.0 vsftpd\n   7539 root      0.0  0.0 sshd-session\n   7544 dev       0.0  0.0 sshd-session\n   8590 dev       0.0  0.0 bash"
+      },
+      "raw": "",
+      "duration": 3.508357286453247
+    },
+    {
+      "name": "accounts",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "medium",
+          "title": "UID 1001 shared by several accounts",
+          "detail": "dev, dev2",
+          "id": "F008",
+          "fp": "12ef6b03dd42"
+        },
+        {
+          "severity": "info",
+          "title": "Standard RHEL system accounts with GID 0: sync, shutdown, halt, operator",
+          "detail": "Created this way by the installation (sync, shutdown, halt, operator) with their stock shell.",
+          "id": "F009",
+          "fp": "da273ab6c12a"
+        },
+        {
+          "severity": "info",
+          "title": "Users with interactive login: guest, dev, dev2",
+          "detail": "",
+          "id": "F010",
+          "fp": "0c065b440621"
+        },
+        {
+          "severity": "critical",
+          "title": "Account 'guest' with an empty password in /etc/shadow",
+          "detail": "Login without a password.",
+          "id": "F011",
+          "fp": "5c7ae56ebe15"
+        },
+        {
+          "severity": "low",
+          "title": "Account files modified in the last 7 days",
+          "detail": "/etc/passwd, /etc/shadow, /etc/group, /etc/gshadow",
+          "id": "F012",
+          "fp": "31c59ae7f874"
+        }
+      ],
+      "data": {
+        "interactive_users": [
+          "guest",
+          "dev",
+          "dev2"
+        ]
+      },
+      "raw": "",
+      "duration": 0.27438807487487793
+    },
+    {
+      "name": "sudoers",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "Defaults !authenticate: sudo never asks for a password",
+          "detail": "/etc/sudoers.d/90-lab: Defaults:dev !authenticate",
+          "id": "F013",
+          "fp": "9786144a3caf"
+        },
+        {
+          "severity": "medium",
+          "title": "'dev' can run any command as root",
+          "detail": "/etc/sudoers.d/90-lab: dev = (ALL:ALL) ALL",
+          "id": "F014",
+          "fp": "8c0b2ed5764b"
+        },
+        {
+          "severity": "info",
+          "title": "Members of group wheel: none",
+          "detail": "",
+          "id": "F015",
+          "fp": "a4635270070a"
+        }
+      ],
+      "data": {
+        "rules_checked": 3
+      },
+      "raw": "",
+      "duration": 0.3515911102294922
+    },
+    {
+      "name": "sshd",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "critical",
+          "title": "SSH accepts empty passwords (PermitEmptyPasswords yes)",
+          "detail": "Anyone with a passwordless account can log in without a password.",
+          "id": "F016",
+          "fp": "b8035c40b897"
+        },
+        {
+          "severity": "high",
+          "title": "SSH allows direct root login with a password (PermitRootLogin yes)",
+          "detail": "Recommended: 'prohibit-password' or 'no'.",
+          "id": "F017",
+          "fp": "09508e7e4d08"
+        },
+        {
+          "severity": "medium",
+          "title": "SSH accepts password authentication (PasswordAuthentication yes)",
+          "detail": "Public keys only are recommended, especially when SSH is reachable from the Internet.",
+          "id": "F018",
+          "fp": "9251ad20883f"
+        },
+        {
+          "severity": "low",
+          "title": "SSH: X11Forwarding enabled",
+          "detail": "Useful only when remote graphical applications are needed.",
+          "id": "F019",
+          "fp": "784f1b7743ad"
+        },
+        {
+          "severity": "low",
+          "title": "SSH: MaxAuthTries 10 (above the default of 6)",
+          "detail": "",
+          "id": "F020",
+          "fp": "1ae912ec961c"
+        }
+      ],
+      "data": {
+        "effective": true
+      },
+      "raw": "",
+      "duration": 0.14237403869628906
+    },
+    {
+      "name": "permissions",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "critical",
+          "title": "SSH private key readable by others: /home/dev/.ssh/id_ed25519",
+          "detail": "mode=644",
+          "id": "F021",
+          "fp": "a03114171525"
+        },
+        {
+          "severity": "high",
+          "title": "Home directory of 'dev2' writable by everyone",
+          "detail": "/home/dev2",
+          "id": "F022",
+          "fp": "b807009db355"
+        },
+        {
+          "severity": "high",
+          "title": "World-writable directory without sticky bit",
+          "detail": "/opt/app",
+          "id": "F023",
+          "fp": "a0521dde8885"
+        },
+        {
+          "severity": "high",
+          "title": "World-writable directory without sticky bit",
+          "detail": "/srv/ftp/pub",
+          "id": "F024",
+          "fp": "18923221a7e7"
+        },
+        {
+          "severity": "high",
+          "title": "World-writable directory without sticky bit",
+          "detail": "/srv/ftp/upload",
+          "id": "F025",
+          "fp": "46e8c042c456"
+        },
+        {
+          "severity": "high",
+          "title": "Credentials file writable by everyone",
+          "detail": "/opt/app/db.env",
+          "id": "F026",
+          "fp": "a41859f2d998"
+        },
+        {
+          "severity": "low",
+          "title": "1 files/directories open to everyone in home directories",
+          "detail": "Risk limited to the other local users. Examples: /home/dev2",
+          "id": "F027",
+          "fp": "8ec3f54c7d60"
+        }
+      ],
+      "data": {
+        "suid_sgid_total": 14,
+        "file_capabilities": 0
+      },
+      "raw": "",
+      "duration": 0.9737396240234375
+    },
+    {
+      "name": "persistence",
+      "status": "ok",
+      "findings": [],
+      "data": {
+        "cron_files_with_entries": 0,
+        "timers": 2
+      },
+      "raw": "",
+      "duration": 0.8036501407623291
+    },
+    {
+      "name": "integrity",
+      "status": "ok",
+      "findings": [],
+      "data": {
+        "checked_commands": 24,
+        "procs_proc": 8,
+        "procs_ps": 6
+      },
+      "raw": "",
+      "duration": 2.8972084522247314
+    },
+    {
+      "name": "services",
+      "status": "ok",
+      "findings": [],
+      "data": {
+        "units_checked": 5,
+        "listening": "Netid State  Recv-Q Send-Q Local Address:Port  Peer Address:PortProcess                       \nudp   UNCONN 0      0         127.0.0.11:34757      0.0.0.0:*                                 \ntcp   LISTEN 0      128          0.0.0.0:22         0.0.0.0:*    users:((\"sshd\",pid=1,fd=7))  \ntcp   LISTEN 0      32           0.0.0.0:21         0.0.0.0:*    users:((\"vsftpd\",pid=9,fd=3))\ntcp   LISTEN 0      4096      127.0.0.11:35587      0.0.0.0:*                                 \ntcp   LISTEN 0      128             [::]:22            [::]:*    users:((\"sshd\",pid=1,fd=8))"
+      },
+      "raw": "",
+      "duration": 0.35135936737060547
+    },
+    {
+      "name": "listeners",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Listening on the network: 21/tcp vsftpd, 22/tcp sshd",
+          "detail": "",
+          "id": "F028",
+          "fp": "1922048acbd9"
+        }
+      ],
+      "data": {
+        "listeners": [
+          {
+            "port": "22/tcp",
+            "addr": "0.0.0.0",
+            "pid": 1,
+            "process": "sshd",
+            "exe": "/usr/sbin/sshd",
+            "user": "root",
+            "loopback": false
+          },
+          {
+            "port": "21/tcp",
+            "addr": "0.0.0.0",
+            "pid": 9,
+            "process": "vsftpd",
+            "exe": "/usr/sbin/vsftpd",
+            "user": "root",
+            "loopback": false
+          }
+        ]
+      },
+      "raw": "",
+      "duration": 0.2937650680541992
+    },
+    {
+      "name": "firewall",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "No active firewall and services reachable besides SSH: 21/tcp",
+          "detail": "No rules in ufw/firewalld/nftables/iptables.",
+          "id": "F029",
+          "fp": "a56cab3b28b1"
+        }
+      ],
+      "data": {
+        "active": []
+      },
+      "raw": "",
+      "duration": 0.3471493721008301
+    },
+    {
+      "name": "containers",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Docker not present",
+          "detail": "",
+          "id": "F030",
+          "fp": "64f65cd8ba3a"
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 0.14491605758666992
+    },
+    {
+      "name": "dns",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "No DNS server listening on port 53",
+          "detail": "",
+          "id": "F031",
+          "fp": "dcd301db116a"
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 0.06876111030578613
+    },
+    {
+      "name": "mysql",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "No MySQL/MariaDB server running",
+          "detail": "",
+          "id": "F032",
+          "fp": "70fcd111da04"
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 0.06804394721984863
+    },
+    {
+      "name": "ftp",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "FTP: the anonymous user can WRITE to the server",
+          "detail": "anon_upload_enable=YES, anon_mkdir_write_enable=YES with write_enable=YES; writable directories under /srv/ftp: /srv/ftp/pub, /srv/ftp/upload. Anyone can upload files without a password: a drop point for malware or illegal material in the name of the server owner.",
+          "id": "F033",
+          "fp": "74b4943e27a8"
+        },
+        {
+          "severity": "medium",
+          "title": "FTP: system users with clear-text passwords (local_enable=YES, ssl_enable=NO)",
+          "detail": "The passwords travelling unencrypted are those of the system accounts: whoever intercepts the traffic can then also log in via SSH. Enable ssl_enable or use SFTP.",
+          "id": "F034",
+          "fp": "6dfc14c2f12c"
+        },
+        {
+          "severity": "low",
+          "title": "FTP: local users not confined to their home directory (chroot_local_user=NO)",
+          "detail": "Via FTP they can browse the whole readable file system.",
+          "id": "F035",
+          "fp": "d21689099eea"
+        },
+        {
+          "severity": "info",
+          "title": "vsftpd: configuration read from /etc/vsftpd/vsftpd.conf",
+          "detail": "",
+          "id": "F036",
+          "fp": "ff3af28ae3fd"
+        }
+      ],
+      "data": {
+        "config": "/etc/vsftpd/vsftpd.conf"
+      },
+      "raw": "",
+      "duration": 0.27115416526794434
+    },
+    {
+      "name": "updates",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "34 security updates not installed (including critical components: glibc, glibc-common, glibc-minimal-langpack, openssl, systemd)",
+          "detail": "acl, attr, coreutils-single, curl-minimal, expat, gawk, glib2, glibc, glibc-common, glibc-minimal-langpack, gnutls, gzip, libacl, libarchive, libattr, libcurl-minimal, libevent, libgcrypt, libnghttp2, libsolv",
+          "id": "F037",
+          "fp": "93490aa81786"
+        },
+        {
+          "severity": "info",
+          "title": "Upgradable packages: 34, of which security: 34",
+          "detail": "",
+          "id": "F038",
+          "fp": "5dd7ae15f2ab"
+        },
+        {
+          "severity": "low",
+          "title": "Automatic security updates not enabled",
+          "detail": "Recommended: unattended-upgrades (apt) or dnf-automatic (dnf).",
+          "id": "F039",
+          "fp": "1fdfb2690023"
+        }
+      ],
+      "data": {
+        "upgradable": 34,
+        "security": 34,
+        "security_named": [
+          "acl",
+          "attr",
+          "coreutils-single",
+          "curl-minimal",
+          "expat",
+          "gawk",
+          "glib2",
+          "glibc",
+          "glibc-common",
+          "glibc-minimal-langpack",
+          "gnutls",
+          "gzip",
+          "libacl",
+          "libarchive",
+          "libattr",
+          "libcurl-minimal",
+          "libevent",
+          "libgcrypt",
+          "libnghttp2",
+          "libsolv",
+          "libtasn1",
+          "libxml2",
+          "openssl",
+          "openssl-libs",
+          "p11-kit",
+          "p11-kit-trust",
+          "pam",
+          "sqlite-libs",
+          "systemd",
+          "systemd-libs",
+          "systemd-pam",
+          "systemd-rpm-macros",
+          "tar",
+          "vim-minimal"
+        ],
+        "new_from_security": [],
+        "held_back": 0,
+        "automatic_updates": false
+      },
+      "raw": "",
+      "duration": 0.5399172306060791
+    },
+    {
+      "name": "disks",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "No disk with SMART detected (normal on virtual machines)",
+          "detail": "",
+          "id": "F040",
+          "fp": "f9c66e55dd1c"
+        }
+      ],
+      "data": {
+        "smart_devices": []
+      },
+      "raw": "",
+      "duration": 0.5709238052368164
+    },
+    {
+      "name": "platform",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Target is a container: disk encryption and Secure Boot concern the host",
+          "detail": "",
+          "id": "F041",
+          "fp": "7f227eb1f1e5"
+        }
+      ],
+      "data": {
+        "kind": "container",
+        "root_encrypted": false,
+        "efi": false,
+        "secure_boot": null
+      },
+      "raw": "",
+      "duration": 0.07925081253051758
+    },
+    {
+      "name": "rkhunter",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "rkhunter is not installed on the target: no rkhunter check",
+          "detail": "Install it while the system is in a known clean state, create the baseline then (rkhunter --propupd) and schedule periodic checks.",
+          "id": "F042",
+          "fp": "9a6f82daa678"
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 2.1457672119140625e-05
+    }
+  ]
+}

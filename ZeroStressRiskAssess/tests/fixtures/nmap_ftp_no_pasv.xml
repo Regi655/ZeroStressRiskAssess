@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Tue Oct 13 20:09:24 2026 as: nmap -sV -&#45;version-light -Pn -p21 -&#45;script ftp-anon -oX /tmp/claude-0/-home-claude/1f3bfeea-2aeb-533f-b2f0-9908dcdad661/scratchpad/ftp_nopasv.xml 192.0.2.2 -->
+<nmaprun scanner="nmap" args="nmap -sV -&#45;version-light -Pn -p21 -&#45;script ftp-anon -oX /tmp/claude-0/-home-claude/1f3bfeea-2aeb-533f-b2f0-9908dcdad661/scratchpad/ftp_nopasv.xml 192.0.2.2" start="1791914964" startstr="Tue Oct 13 20:09:24 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="1" services="21"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1791914965" endtime="1791914965"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.2" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="ftp" product="vsftpd" version="3.0.5" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:vsftpd:vsftpd:3.0.5</cpe></service><script id="ftp-anon" output="Anonymous FTP login allowed (FTP code 230)&#xa;Can&apos;t get directory listing: PASV failed: 550 Permission denied."/></port>
+</ports>
+<times srtt="57" rttvar="5000" to="100000"/>
+</host>
+<runstats><finished time="1791914965" timestr="Tue Oct 13 20:09:25 2026" summary="Nmap done at Tue Oct 13 20:09:25 2026; 1 IP address (1 host up) scanned in 1.23 seconds" elapsed="1.23" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

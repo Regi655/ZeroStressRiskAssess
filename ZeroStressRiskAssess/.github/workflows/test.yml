@@ -1,0 +1,32 @@
+# Runs the tests on every push and pull request, on a clean GitHub machine.
+# No secrets and no lab network: the tests use a fake target (tests/fakes.py), real recorded output
+# (tests/fixtures/) and throwaway keys created on the fly.
+name: test
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read        # the workflow only reads the code
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12", "3.14"]   # 3.9 = minimum stated in the README
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Programs used by some tests (nmap for the NSE script categories)
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends nmap openssh-client
+      - name: Python dependencies
+        run: pip install -r requirements.txt -r requirements-dev.txt
+      - name: Lint (pyflakes)
+        run: python -m pyflakes zerostressriskassess tests tools
+      - name: Test
+        run: python -m unittest discover -s tests -t . -v
