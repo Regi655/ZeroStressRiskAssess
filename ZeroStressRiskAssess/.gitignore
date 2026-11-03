@@ -20,10 +20,9 @@
 !/lab/
 # sample report and screenshots (from the lab, fake data)
 !/docs/
-# tests (fake target, recorded output with personal data removed: see tests/fixtures/README.md) and the CI
-# that runs them on every push
+# tests (fake target, recorded output with personal data removed: see tests/fixtures/README.md); the CI that
+# runs them on every push is .github/workflows/test.yml at the root of the repository
 !/tests/
-!/.github/
 !/requirements-dev.txt
 
 # --- always excluded, including inside re-included directories

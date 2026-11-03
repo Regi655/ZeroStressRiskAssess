@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read        # the workflow only reads the code
 
+defaults:
+  run:
+    working-directory: ZeroStressRiskAssess   # the project lives in this subdirectory of the repository
+
 jobs:
   test:
     runs-on: ubuntu-24.04
