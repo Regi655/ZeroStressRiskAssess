@@ -108,7 +108,7 @@ class MaskingTest(unittest.TestCase):
             self.assertEqual(mask(t), (t, {}))
 
     def test_password_on_command_line(self):  # the lab's .bash_history
-        out, c = mask("mysql -u root -pFakePassword123 -h db.internal.lab")
+        out, c = mask("mysql -u root -pFakePassword123 -h db.internal.lab")  # ggignore: fake password, masking test
         self.assertEqual(out, "mysql -u root -p[MASKED] -h db.internal.lab")
         self.assertEqual(mask("mysql -u root -p -h db -P 3306")[1], {})  # -p without a value, -P = port
         self.assertIn("[MASKED]", mask("sshpass -p hunter22 ssh host")[0])
