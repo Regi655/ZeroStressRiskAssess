@@ -66,8 +66,11 @@ def build_parser():
     return ap
 
 
-def main(argv=None, result=None) -> int:
-    """result: optional dict, filled with {"report": ...} when an assessment completes (used by inventory.py)."""
+def main(argv=None, result=None, secrets=None) -> int:
+    """result: optional dict, filled with {"report": ...} when an assessment completes (used by inventory.py).
+    secrets: optional {"ssh": ..., "key": ..., "sudo": ...} given by a caller that already asked for them (the web
+    interface, which has no terminal): used instead of prompting, never put on the command line."""
+    secrets = {k: v for k, v in (secrets or {}).items() if v}
     if argv is None:
         argv = sys.argv[1:]
     if not argv:
@@ -95,7 +98,7 @@ def main(argv=None, result=None) -> int:
         ap.error("invalid --nmap-ports: only digits, commas, hyphens, T: and U: are allowed")
     if args.no_install and args.keep_tools:
         ap.error("--no-install and --keep-tools exclude each other (with --no-install nothing is installed)")
-    if args.ask_key_pass and not args.key:
+    if (args.ask_key_pass or "key" in secrets) and not args.key:
         ap.error("--ask-key-pass requires -i/--key")
     # "~" is expanded by the shell, but not inside the zsra console (it splits the line itself, with no shell
     # in between): expanding here makes both work the same way.
@@ -113,7 +116,7 @@ def main(argv=None, result=None) -> int:
     if args.recon_only:
         return _recon(args, result)
 
-    spwd = getpass.getpass("sudo password: ") if args.ask_sudo_pass else None
+    spwd = secrets.get("sudo") or (getpass.getpass("sudo password: ") if args.ask_sudo_pass else None)
     if args.sudo_pass_env:
         # Environment variable rather than argument: arguments are visible to every user through `ps`, a
         # process environment only to its owner and root. It should still be set for the single command only.
@@ -123,8 +126,8 @@ def main(argv=None, result=None) -> int:
     if args.local:
         rem = Local(sudo_password=spwd)
     else:
-        kpwd = getpass.getpass("Key passphrase: ") if args.ask_key_pass else None
-        pwd = getpass.getpass("SSH user password: ") if args.ask_pass else None
+        kpwd = secrets.get("key") or (getpass.getpass("Key passphrase: ") if args.ask_key_pass else None)
+        pwd = secrets.get("ssh") or (getpass.getpass("SSH user password: ") if args.ask_pass else None)
         rem = Remote(args.host, args.user, args.port, args.key, pwd, spwd, args.accept_new_hostkey, passphrase=kpwd)
 
     def confirm(msg):

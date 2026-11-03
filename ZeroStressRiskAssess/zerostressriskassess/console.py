@@ -35,7 +35,9 @@ class Console(cmd.Cmd):
         if stdin is not None:
             self.use_rawinput = False
         tty = getattr(self.stdout, "isatty", lambda: False)() and not os.environ.get("NO_COLOR")
-        self.prompt = "\x1b[1;36mzsra\x1b[0m > " if tty else "zsra > "
+        # \x01 ... \x02 tell readline that the colour codes take no space on screen: without them readline
+        # miscounts the prompt width, and history (arrow up) and backspace redraw only part of the line.
+        self.prompt = "\x01\x1b[1;36m\x02zsra\x01\x1b[0m\x02 > " if tty else "zsra > "
 
     # ------------------------------------------------------------------ execution
     def _run(self, argv, main=None) -> int:
@@ -61,6 +63,24 @@ class Console(cmd.Cmd):
     def _has_out_dir(self, argv):
         return any(a == "--out-dir" or a.startswith("--out-dir=") for a in argv)
 
+    def precmd(self, line):
+        # "zsra scan ..." typed out of habit inside the console: drop the redundant program name.
+        parts = line.split(None, 1)
+        if parts and parts[0] == "zsra":
+            line = parts[1] if len(parts) > 1 else ""
+        return line
+
+    def postcmd(self, stop, line):
+        _restore_tty()   # ssh, getpass or an interrupted command may leave the terminal without echo/line editing
+        return stop
+
+    def _fix_host_flag(self, argv):
+        """'-h HOST' (habit from other tools) would show the help: here -h is help, the host is positional."""
+        if len(argv) >= 2 and argv[0] == "-h" and not argv[1].startswith("-"):
+            self.stdout.write(f"Note: -h is help; the host is written without options (scan {argv[1]} ...).\n")
+            return argv[1:]
+        return argv
+
     def emptyline(self):   # an empty line must not repeat the previous command (cmd.Cmd default)
         return False
 
@@ -81,6 +101,7 @@ class Console(cmd.Cmd):
         if not argv:
             self.stdout.write("Usage: scan HOST -u USER [options]   (help scan)\n")
             return
+        argv = self._fix_host_flag(argv)
         self._run(argv + ([] if self._has_out_dir(argv) else ["--out-dir", self.out_dir]))
 
     def do_recon(self, line):
@@ -96,6 +117,7 @@ class Console(cmd.Cmd):
         if not argv:
             self.stdout.write("Usage: recon HOST [options]   (help recon)\n")
             return
+        argv = self._fix_host_flag(argv)
         self._run(argv + ["--recon-only"] + ([] if self._has_out_dir(argv) else ["--out-dir", self.out_dir]))
 
     def do_finalize(self, line):
@@ -195,15 +217,8 @@ class Console(cmd.Cmd):
     def do_tools(self, line):
         """tools
     Check the external programs on the controller (nmap, ssh-audit, grype, trivy, Lynis)."""
-        from .cli import DEFAULT_LYNIS
-        for name, hint in (("nmap", "sudo apt install nmap"), ("ssh-audit", "sudo apt install ssh-audit"),
-                           ("grype", "curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin"),
-                           ("trivy", "see README, Requirements (Aqua's signed APT repository)")):
-            where = shutil.which(name)
-            self.stdout.write(f"  {'[ok]     ' if where else '[missing]'} {name:10} {where or hint}\n")
-        ok = os.path.isfile(os.path.join(DEFAULT_LYNIS, "lynis"))
-        self.stdout.write(f"  {'[ok]     ' if ok else '[missing]'} {'lynis':10} "
-                          f"{DEFAULT_LYNIS if ok else './setup.sh (downloads it into vendor/lynis)'}\n")
+        for name, ok, where in tools_status():
+            self.stdout.write(f"  {'[ok]     ' if ok else '[missing]'} {name:10} {where}\n")
         self.stdout.write("  Missing tools are skipped and reported as such.\n")
 
     def do_options(self, line):
@@ -240,14 +255,55 @@ class Console(cmd.Cmd):
 
     # ------------------------------------------------------------------ helpers
     def _reports(self):
-        rows = []
-        for f in Path(self.out_dir).glob("**/report.json"):
-            try:
-                rows.append((f, json.loads(f.read_text(encoding="utf-8"))))
-            except (OSError, ValueError):
-                continue
-        rows.sort(key=lambda r: r[0].stat().st_mtime, reverse=True)
-        return rows
+        return list_reports(self.out_dir)
+
+
+def list_reports(out_dir):
+    """[(path of report.json, parsed report)], newest first. Unreadable files are skipped."""
+    rows = []
+    for f in Path(out_dir).glob("**/report.json"):
+        try:
+            rows.append((f, json.loads(f.read_text(encoding="utf-8"))))
+        except (OSError, ValueError):
+            continue
+    rows.sort(key=lambda r: r[0].stat().st_mtime, reverse=True)
+    return rows
+
+
+def tools_status():
+    """[(name, present, path or how to install it)] for the external programs used on the controller."""
+    from .cli import DEFAULT_LYNIS
+    rows = []
+    for name, hint in (("nmap", "sudo apt install nmap"), ("ssh-audit", "sudo apt install ssh-audit"),
+                       ("grype", "curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin"),
+                       ("trivy", "see README, Requirements (Aqua's signed APT repository)")):
+        where = shutil.which(name)
+        rows.append((name, bool(where), where or hint))
+    ok = os.path.isfile(os.path.join(DEFAULT_LYNIS, "lynis"))
+    rows.append(("lynis", ok, DEFAULT_LYNIS if ok else "./setup.sh (downloads it into vendor/lynis)"))
+    return rows
+
+
+_TTY_STATE = None
+
+
+def _save_tty():
+    global _TTY_STATE
+    try:
+        import termios
+        _TTY_STATE = termios.tcgetattr(sys.stdin.fileno())
+    except (ImportError, OSError, ValueError, AttributeError):   # not a terminal, or no termios (Windows)
+        _TTY_STATE = None
+
+
+def _restore_tty():
+    if _TTY_STATE is None:
+        return
+    try:
+        import termios
+        termios.tcsetattr(sys.stdin.fileno(), termios.TCSADRAIN, _TTY_STATE)
+    except (ImportError, OSError, ValueError):
+        pass
 
 
 def _history(load: bool):
@@ -273,6 +329,7 @@ def run(out_dir="./reports") -> int:
     print("ZeroStressRiskAssess console. 'help' lists the commands, 'exit' or Ctrl-D quits.")
     print("Never type passwords into commands: use --ask-pass / --ask-sudo-pass.\n")
     _history(load=True)
+    _save_tty()
     c = Console(out_dir=out_dir)
     try:
         while True:
@@ -281,7 +338,9 @@ def run(out_dir="./reports") -> int:
                 break
             except KeyboardInterrupt:   # Ctrl-C at the prompt cancels the line instead of exiting
                 print("^C")
+                _restore_tty()
     finally:
+        _restore_tty()
         _history(load=False)
     return 0
 
