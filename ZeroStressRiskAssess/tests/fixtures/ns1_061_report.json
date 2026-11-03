@@ -1,0 +1,715 @@
+{
+  "meta": {
+    "target": "172.28.7.11",
+    "timestamp": "20261013-165757",
+    "os": "Ubuntu 22.04.5 LTS",
+    "auth": "publickey",
+    "version": "0.5.1",
+    "kernel": "7.2.9-2-cachyos",
+    "arch": "x86_64",
+    "stage": "DRAFT to be reviewed - do NOT distribute in this form",
+    "masked_secrets": {}
+  },
+  "summary": {
+    "score": 60,
+    "level": "HIGH",
+    "counts": {
+      "critical": 0,
+      "high": 6,
+      "medium": 2,
+      "low": 6,
+      "info": 14
+    }
+  },
+  "tools": [
+    {
+      "tool": "lynis",
+      "package": "-",
+      "action": "not needed (check skipped with --skip)"
+    },
+    {
+      "tool": "chkrootkit",
+      "package": "-",
+      "action": "not needed (check skipped with --skip)"
+    },
+    {
+      "tool": "clamav",
+      "package": "-",
+      "action": "not needed (check skipped with --skip)"
+    },
+    {
+      "tool": "smartmontools",
+      "package": "smartmontools",
+      "action": "to be installed",
+      "to": "7.2-1ubuntu0.1"
+    },
+    {
+      "tool": "*",
+      "package": "smartmontools",
+      "action": "installazione rc=0",
+      "detail": ""
+    },
+    {
+      "tool": "*",
+      "package": "smartmontools",
+      "action": "rimozione rc=0",
+      "detail": ""
+    }
+  ],
+  "scans": [
+    {
+      "name": "nmap",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Open port 22/tcp: ssh OpenSSH 8.9p1 Ubuntu 3ubuntu0.17",
+          "detail": "",
+          "id": "F001"
+        },
+        {
+          "severity": "info",
+          "title": "Open port 53/tcp: domain ISC BIND 9.18.39-0ubuntu0.22.04.6",
+          "detail": "",
+          "id": "F002"
+        }
+      ],
+      "data": {
+        "open_ports": [
+          {
+            "port": 22,
+            "proto": "tcp",
+            "service": "ssh OpenSSH 8.9p1 Ubuntu 3ubuntu0.17"
+          },
+          {
+            "port": 53,
+            "proto": "tcp",
+            "service": "domain ISC BIND 9.18.39-0ubuntu0.22.04.6"
+          }
+        ]
+      },
+      "raw": "",
+      "duration": 10.643731355667114
+    },
+    {
+      "name": "resources",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Target is a container: CPU, load, RAM and temperatures are those of the host",
+          "detail": "Detected from /.dockerenv or /run/.containerenv.",
+          "id": "F003"
+        },
+        {
+          "severity": "info",
+          "title": "CPU 1.2% | RAM 24.0% | swap 0.0% | load 0.18 0.47 0.43 1/1943 1788",
+          "detail": "",
+          "id": "F004"
+        }
+      ],
+      "data": {
+        "cpu_pct": 1.2,
+        "cpu_sustained": 1.1,
+        "cpu_samples": [
+          1.1,
+          1.3,
+          1.3
+        ],
+        "ram_pct": 24.0,
+        "swap_pct": 0.0,
+        "disks": [
+          {
+            "mount": "/etc/hosts",
+            "use_pct": 30
+          }
+        ],
+        "temps": [
+          {
+            "sensor": "acpitz",
+            "celsius": 16.8,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "acpitz",
+            "celsius": 27.8,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Composite)",
+            "celsius": 43.85,
+            "max": null,
+            "crit": 84.85,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Sensor 1)",
+            "celsius": 43.85,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Sensor 2)",
+            "celsius": 48.85,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 8)",
+            "celsius": 25.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 12)",
+            "celsius": 25.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 16)",
+            "celsius": 25.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Package id 0)",
+            "celsius": 30.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 20)",
+            "celsius": 24.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 24)",
+            "celsius": 26.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 0)",
+            "celsius": 23.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 28)",
+            "celsius": 24.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 36)",
+            "celsius": 25.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 37)",
+            "celsius": 25.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 38)",
+            "celsius": 25.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 39)",
+            "celsius": 25.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "coretemp (Core 4)",
+            "celsius": 27.0,
+            "max": 80.0,
+            "crit": 100.0,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "iwlwifi_1",
+            "celsius": 25.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Composite)",
+            "celsius": 43.85,
+            "max": 79.85,
+            "crit": 84.85,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Composite)",
+            "celsius": 41.85,
+            "max": 81.85,
+            "crit": 84.85,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Sensor 1)",
+            "celsius": 41.85,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "nvme (Sensor 2)",
+            "celsius": 48.85,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 30.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 43.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 30.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 37.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 36.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "gigabyte_wmi",
+            "celsius": 36.0,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "jc42",
+            "celsius": 43.875,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "jc42",
+            "celsius": 44.875,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "jc42",
+            "celsius": 46.125,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "jc42",
+            "celsius": 43.562,
+            "max": null,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "r8169_0_700:00",
+            "celsius": 39.5,
+            "max": 120.0,
+            "crit": null,
+            "kind": "hwmon"
+          },
+          {
+            "sensor": "zona termica acpitz",
+            "celsius": 16.8,
+            "max": 19.8,
+            "crit": 20.8,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica acpitz",
+            "celsius": 27.8,
+            "max": null,
+            "crit": 105.0,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica x86_pkg_temp",
+            "celsius": 30.0,
+            "max": null,
+            "crit": null,
+            "kind": "thermal"
+          },
+          {
+            "sensor": "zona termica iwlwifi_1",
+            "celsius": 25.0,
+            "max": null,
+            "crit": null,
+            "kind": "thermal"
+          }
+        ],
+        "loadavg": "0.18 0.47 0.43 1/1943 1788",
+        "cpu_cores": 20,
+        "uptime": "up 1 hour, 4 minutes",
+        "container": true,
+        "top_cpu": "PID USER     %CPU %MEM COMMAND\n   1486 noc       0.3  0.0 sshd\n      1 root      0.0  0.0 sshd\n     15 bind      0.0  0.1 named\n   1475 root      0.0  0.0 sshd\n   2221 noc       0.0  0.0 bash"
+      },
+      "raw": "",
+      "duration": 3.9011714458465576
+    },
+    {
+      "name": "accounts",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "Users with interactive login: noc",
+          "detail": "",
+          "id": "F005"
+        },
+        {
+          "severity": "low",
+          "title": "Account files modified in the last 7 days",
+          "detail": "/etc/passwd, /etc/shadow, /etc/group, /etc/gshadow",
+          "id": "F006"
+        }
+      ],
+      "data": {
+        "interactive_users": [
+          "noc"
+        ]
+      },
+      "raw": "",
+      "duration": 0.2256155014038086
+    },
+    {
+      "name": "sudoers",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "Passwordless sudo rule for ALL commands",
+          "detail": "/etc/sudoers.d/90-noc: noc = (ALL) NOPASSWD: ALL",
+          "id": "F007"
+        },
+        {
+          "severity": "medium",
+          "title": "'noc' can run any command as root",
+          "detail": "/etc/sudoers.d/90-noc: noc = (ALL) NOPASSWD: ALL",
+          "id": "F008"
+        },
+        {
+          "severity": "info",
+          "title": "Members of group sudo: none",
+          "detail": "",
+          "id": "F009"
+        }
+      ],
+      "data": {
+        "rules_checked": 4
+      },
+      "raw": "",
+      "duration": 0.28980112075805664
+    },
+    {
+      "name": "sshd",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "low",
+          "title": "SSH: X11Forwarding enabled",
+          "detail": "Useful only when remote graphical applications are needed.",
+          "id": "F010"
+        }
+      ],
+      "data": {
+        "effective": true
+      },
+      "raw": "",
+      "duration": 0.12189102172851562
+    },
+    {
+      "name": "permissions",
+      "status": "ok",
+      "findings": [],
+      "data": {
+        "suid_sgid_total": 15
+      },
+      "raw": "",
+      "duration": 0.5888237953186035
+    },
+    {
+      "name": "persistence",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "authorized SSH keys for 'noc' (1)",
+          "detail": "/home/noc/.ssh/authorized_keys: 256 SHA256:IOTW69CiHhe7xVgTSLc92wKlkmgoavl75hcep/KE8r0 riskassess-lab (ED25519)",
+          "id": "F011"
+        }
+      ],
+      "data": {
+        "cron_files_with_entries": 3
+      },
+      "raw": "",
+      "duration": 0.5970067977905273
+    },
+    {
+      "name": "integrity",
+      "status": "ok",
+      "findings": [],
+      "data": {
+        "checked_commands": 23,
+        "procs_proc": 8,
+        "procs_ps": 6
+      },
+      "raw": "",
+      "duration": 3.8045928478240967
+    },
+    {
+      "name": "services",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "systemd not present: service check not performed",
+          "detail": "",
+          "id": "F012"
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 0.04862475395202637
+    },
+    {
+      "name": "listeners",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "low",
+          "title": "Listening ports with a process that is not visible: 53/tcp, 53/udp",
+          "detail": "Addresses: 53/tcp on 172.28.7.11; 53/udp on 172.28.7.11. `ss` does not show the process even with sudo: typical of containers (root without CAP_SYS_PTRACE cannot see other users' processes) or of /proc mounted with hidepid.",
+          "id": "F013"
+        },
+        {
+          "severity": "info",
+          "title": "Listening on the network: 22/tcp sshd",
+          "detail": "",
+          "id": "F014"
+        }
+      ],
+      "data": {
+        "listeners": [
+          {
+            "port": "22/tcp",
+            "addr": "0.0.0.0",
+            "pid": 1,
+            "process": "sshd",
+            "exe": "/usr/sbin/sshd",
+            "user": "root",
+            "loopback": false
+          }
+        ]
+      },
+      "raw": "",
+      "duration": 0.19901561737060547
+    },
+    {
+      "name": "firewall",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "No active firewall and services reachable besides SSH: 53/tcp, 53/udp",
+          "detail": "No rules in ufw/firewalld/nftables/iptables.",
+          "id": "F015"
+        }
+      ],
+      "data": {
+        "active": []
+      },
+      "raw": "",
+      "duration": 0.28433823585510254
+    },
+    {
+      "name": "dns",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "DNS: process identified from the process list, not from the sockets",
+          "detail": "`ss` does not show who listens on 53 even with sudo (typical of containers: root without CAP_SYS_PTRACE cannot see other users' processes). The addresses are attributed to: named",
+          "id": "F016"
+        },
+        {
+          "severity": "medium",
+          "title": "BIND is both authoritative and a recursive resolver",
+          "detail": "Zones: isp-lab.example, cliente1.example. An authoritative server should not resolve other names: a resolver problem (poisoned cache, overload) also hits the published zones. If recursion is not needed: 'recursion no;'.",
+          "id": "F017"
+        },
+        {
+          "severity": "low",
+          "title": "Authoritative BIND without rate limiting (rate-limit)",
+          "detail": "Without a limit on answers per second the server can be used for amplification even without recursion.",
+          "id": "F018"
+        },
+        {
+          "severity": "info",
+          "title": "DNS: BIND listening (exposed on the network), role: authoritative + resolver",
+          "detail": "Indirizzi: 127.0.0.1, 172.28.7.11",
+          "id": "F019"
+        },
+        {
+          "severity": "high",
+          "title": "DNS: OPEN resolver - answers recursive queries from the controller",
+          "detail": "SERVFAIL answer with 'ra' to a query for www.example.com. If the server is reachable from the Internet it can be used for DDoS amplification attacks. Cause in the configuration: allow-recursion { any; }.",
+          "id": "F020"
+        },
+        {
+          "severity": "low",
+          "title": "DNS: software version exposed: 9.18.39-0ubuntu0.22.04.6-Ubuntu",
+          "detail": "Anyone can read it with a 'version.bind' query. BIND: version \"...\"; Unbound: hide-version: yes.",
+          "id": "F021"
+        },
+        {
+          "severity": "high",
+          "title": "DNS: zone transfer of 'isp-lab.example' SUCCEEDED from the controller (13 records)",
+          "detail": "Anyone in the same position downloads the complete list of names. Examples: backup-interno.isp-lab.example, mail.isp-lab.example, ns1.isp-lab.example, ns2.isp-lab.example, radius-clienti.isp-lab.example, resolver.isp-lab.example, vpn-amministrazione.isp-lab.example, www.isp-lab.example. Cause in the configuration: allow-transfer { any; }.",
+          "id": "F022"
+        },
+        {
+          "severity": "high",
+          "title": "DNS: zone transfer of 'cliente1.example' SUCCEEDED from the controller (6 records)",
+          "detail": "Anyone in the same position downloads the complete list of names. Examples: gestionale-interno.cliente1.example, www.cliente1.example. Cause in the configuration: allow-transfer { any; }.",
+          "id": "F023"
+        }
+      ],
+      "data": {
+        "probe": {
+          "recursion": {
+            "answered": true,
+            "open": true,
+            "rcode": "SERVFAIL",
+            "ra": true
+          },
+          "version": "9.18.39-0ubuntu0.22.04.6-Ubuntu"
+        }
+      },
+      "raw": "",
+      "duration": 0.3577756881713867
+    },
+    {
+      "name": "updates",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "high",
+          "title": "1 security updates not installed (including critical components: libssl3)",
+          "detail": "libssl3",
+          "id": "F024"
+        },
+        {
+          "severity": "info",
+          "title": "Upgradable packages: 1, of which security: 1",
+          "detail": "",
+          "id": "F025"
+        },
+        {
+          "severity": "low",
+          "title": "Automatic security updates not enabled",
+          "detail": "Recommended: unattended-upgrades (apt) or dnf-automatic (dnf).",
+          "id": "F026"
+        }
+      ],
+      "data": {
+        "upgradable": 1,
+        "security": 1,
+        "security_named": [
+          "libssl3"
+        ],
+        "new_from_security": [],
+        "held_back": 0,
+        "automatic_updates": false
+      },
+      "raw": "",
+      "duration": 3.0521552562713623
+    },
+    {
+      "name": "disks",
+      "status": "ok",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "No disk with SMART detected (normal on virtual machines)",
+          "detail": "",
+          "id": "F027"
+        }
+      ],
+      "data": {
+        "smart_devices": []
+      },
+      "raw": "",
+      "duration": 0.4556312561035156
+    },
+    {
+      "name": "rkhunter",
+      "status": "skipped",
+      "findings": [
+        {
+          "severity": "info",
+          "title": "rkhunter is not installed on the target: no rkhunter check",
+          "detail": "Install it while the system is in a known clean state, create the baseline then (rkhunter --propupd) and schedule periodic checks.",
+          "id": "F028"
+        }
+      ],
+      "data": {},
+      "raw": "",
+      "duration": 4.1961669921875e-05
+    }
+  ]
+}

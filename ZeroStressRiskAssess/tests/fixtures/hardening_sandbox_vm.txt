@@ -1,0 +1,25 @@
+CONTAINER|0
+SYS|kernel.randomize_va_space|2
+SYS|fs.protected_symlinks|0
+SYS|fs.protected_hardlinks|1
+SYS|net.ipv4.conf.all.accept_source_route|0
+SYS|fs.protected_fifos|0
+SYS|fs.protected_regular|0
+SYS|fs.suid_dumpable|0
+SYS|kernel.kptr_restrict|0
+SYS|kernel.dmesg_restrict|1
+SYS|kernel.unprivileged_bpf_disabled|2
+SYS|net.ipv4.conf.all.accept_redirects|1
+SYS|net.ipv4.conf.all.send_redirects|1
+SYS|net.ipv4.tcp_syncookies|1
+SYS|net.ipv4.conf.all.rp_filter|0
+SYS|net.ipv4.ip_forward|0
+MNT|/tmp|/|rw,relatime,discard,no_prefetch_block_bitmaps,resv_strict,resuid=65534,resgid=65534
+MNT|/dev/shm|/dev/shm|rw,relatime,size=8222320k
+MNT|/var/tmp|/|rw,relatime,discard,no_prefetch_block_bitmaps,resv_strict,resuid=65534,resgid=65534
+LOGIN|UMASK		022
+LOGIN|ENCRYPT_METHOD SHA512
+LINK|1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN mode DEFAULT group default qlen 1000\    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+LINK|2: ifb0: <BROADCAST,NOARP> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 32\    link/ether 02:00:00:00:00:01 brd ff:ff:ff:ff:ff:ff
+LINK|3: ifb1: <BROADCAST,NOARP> mtu 1500 qdisc noop state DOWN mode DEFAULT group default qlen 32\    link/ether 02:00:00:00:00:02 brd ff:ff:ff:ff:ff:ff
+LINK|4: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1400 qdisc pfifo_fast state UP mode DEFAULT group default qlen 1000\    link/ether 02:fc:00:00:00:01 brd ff:ff:ff:ff:ff:ff

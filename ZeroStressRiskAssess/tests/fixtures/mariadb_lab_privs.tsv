@@ -1,0 +1,7 @@
+mariadb.sys	localhost	N	N
+root	localhost	Y	Y
+mysql	localhost	Y	Y
+	%	N	N
+radius	%	N	N
+app	%	N	Y
+root	%	Y	Y

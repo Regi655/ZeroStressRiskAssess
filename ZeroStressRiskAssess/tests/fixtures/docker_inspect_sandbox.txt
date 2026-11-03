@@ -1,0 +1,7 @@
+/sysadmin|false|bridge||["CAP_SYS_ADMIN"]|[]|{}||lab/busybox:1
+/host-root|false|bridge||null|[{"Type":"bind","Source":"/","Destination":"/host","Mode":"ro","RW":false,"Propagation":"rslave"}]|{}||lab/busybox:1
+/local-only|false|bridge||null|[]|{"80/tcp":[{"HostIp":"127.0.0.1","HostPort":"9090"}]}||lab/busybox:1
+/host-net|false|host|host|null|[]|{}||lab/busybox:1
+/web|false|bridge||null|[]|{"80/tcp":[{"HostIp":"","HostPort":"8080"}]}||lab/busybox:1
+/with-socket|false|bridge||null|[{"Type":"bind","Source":"/var/run/docker.sock","Destination":"/var/run/docker.sock","Mode":"","RW":true,"Propagation":"rprivate"}]|{}||lab/busybox:1
+/privileged|true|bridge||null|[]|{}||lab/busybox:1

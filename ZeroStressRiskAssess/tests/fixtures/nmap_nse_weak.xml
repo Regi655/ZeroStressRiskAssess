@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE nmaprun>
+<?xml-stylesheet href="file:///usr/bin/../share/nmap/nmap.xsl" type="text/xsl"?>
+<!-- Nmap 7.94SVN scan initiated Tue Oct 13 19:32:33 2026 as: nmap -sV -&#45;version-light -Pn -T4 -p 21,80,443,2222,6379,11211 -&#45;script ftp-anon,ssl-cert,sslv2,ssl-dh-params,ssl-heartbleed,ssl-poodle,ssl-ccs-injection,http-git,http-methods,smb2-security-mode,smb-security-mode,redis-info,mongodb-info,memcached-info,nfs-showmount,vnc-info,rdp-enum-encryption -oX /tmp/claude-0/-home-claude/1f3bfeea-2aeb-533f-b2f0-9908dcdad661/scratchpad/nselab/../nse.xml 192.0.2.2 -->
+<nmaprun scanner="nmap" args="nmap -sV -&#45;version-light -Pn -T4 -p 21,80,443,2222,6379,11211 -&#45;script ftp-anon,ssl-cert,sslv2,ssl-dh-params,ssl-heartbleed,ssl-poodle,ssl-ccs-injection,http-git,http-methods,smb2-security-mode,smb-security-mode,redis-info,mongodb-info,memcached-info,nfs-showmount,vnc-info,rdp-enum-encryption -oX /tmp/claude-0/-home-claude/1f3bfeea-2aeb-533f-b2f0-9908dcdad661/scratchpad/nselab/../nse.xml 192.0.2.2" start="1791912753" startstr="Tue Oct 13 19:32:33 2026" version="7.94SVN" xmloutputversion="1.05">
+<scaninfo type="syn" protocol="tcp" numservices="6" services="21,80,443,2222,6379,11211"/>
+<verbose level="0"/>
+<debugging level="0"/>
+<host starttime="1791912753" endtime="1791912765"><status state="up" reason="user-set" reason_ttl="0"/>
+<address addr="192.0.2.2" addrtype="ipv4"/>
+<hostnames>
+</hostnames>
+<ports><port protocol="tcp" portid="21"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="ftp" product="vsftpd" version="3.0.5" ostype="Unix" method="probed" conf="10"><cpe>cpe:/a:vsftpd:vsftpd:3.0.5</cpe></service><script id="ftp-anon" output="Anonymous FTP login allowed (FTP code 230)&#xa;drwxr-xr-x    2 0        0            4096 Oct 13 17:32 pub&#xa;drwxrwxrwx    2 0        0            4096 Oct 13 17:32 upload [NSE: writeable]"/></port>
+<port protocol="tcp" portid="80"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="http" product="nginx" version="1.24.0" extrainfo="Ubuntu" ostype="Linux" method="probed" conf="10"><cpe>cpe:/a:igor_sysoev:nginx:1.24.0</cpe><cpe>cpe:/o:linux:linux_kernel</cpe></service><script id="http-git" output="&#xa;  192.0.2.2:80/.git/&#xa;    Potential Git repository found (found 2/6 expected files)&#xa;    Remotes:&#xa;      https://git.lab.example/web.git&#xa;"><table key="192.0.2.2:80/.git/">
+<table key="remotes">
+<elem>https://git.lab.example/web.git</elem>
+</table>
+<table key="files-found">
+<elem key=".git/info/exclude">false</elem>
+<elem key=".git/description">false</elem>
+<elem key=".git/config">true</elem>
+<elem key=".gitignore">false</elem>
+<elem key=".git/COMMIT_EDITMSG">false</elem>
+</table>
+</table>
+</script><script id="http-methods" output="&#xa;  Supported Methods: GET HEAD POST PUT DELETE TRACE OPTIONS&#xa;  Potentially risky methods: PUT DELETE TRACE"><table key="Supported Methods">
+<elem>GET</elem>
+<elem>HEAD</elem>
+<elem>POST</elem>
+<elem>PUT</elem>
+<elem>DELETE</elem>
+<elem>TRACE</elem>
+<elem>OPTIONS</elem>
+</table>
+<table key="Potentially risky methods">
+<elem>PUT</elem>
+<elem>DELETE</elem>
+<elem>TRACE</elem>
+</table>
+</script></port>
+<port protocol="tcp" portid="443"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="http" product="nginx" version="1.24.0" extrainfo="Ubuntu" ostype="Linux" tunnel="ssl" method="probed" conf="10"><cpe>cpe:/a:igor_sysoev:nginx:1.24.0</cpe><cpe>cpe:/o:linux:linux_kernel</cpe></service><script id="http-methods" output="&#xa;  Supported Methods: GET HEAD POST PUT DELETE TRACE OPTIONS&#xa;  Potentially risky methods: PUT DELETE TRACE"><table key="Supported Methods">
+<elem>GET</elem>
+<elem>HEAD</elem>
+<elem>POST</elem>
+<elem>PUT</elem>
+<elem>DELETE</elem>
+<elem>TRACE</elem>
+<elem>OPTIONS</elem>
+</table>
+<table key="Potentially risky methods">
+<elem>PUT</elem>
+<elem>DELETE</elem>
+<elem>TRACE</elem>
+</table>
+</script><script id="http-git" output="&#xa;  192.0.2.2:443/.git/&#xa;    Potential Git repository found (found 2/6 expected files)&#xa;    Remotes:&#xa;      https://git.lab.example/web.git&#xa;"><table key="192.0.2.2:443/.git/">
+<table key="remotes">
+<elem>https://git.lab.example/web.git</elem>
+</table>
+<table key="files-found">
+<elem key=".git/info/exclude">false</elem>
+<elem key=".git/description">false</elem>
+<elem key=".git/config">true</elem>
+<elem key=".gitignore">false</elem>
+<elem key=".git/COMMIT_EDITMSG">false</elem>
+</table>
+</table>
+</script><script id="ssl-cert" output="Subject: commonName=web.lab.example&#xa;Issuer: commonName=web.lab.example&#xa;Public Key type: rsa&#xa;Public Key bits: 2048&#xa;Signature Algorithm: sha256WithRSAEncryption&#xa;Not valid before: 2024-01-01T00:00:00&#xa;Not valid after:  2025-01-01T00:00:00&#xa;MD5:   c508:0cb5:d7ad:7d9a:9f6b:15bd:8be8:fc78&#xa;SHA-1: 04a5:c781:3545:6cb6:86af:0df2:d7a7:b5e3:5fbe:1019"><table key="subject">
+<elem key="commonName">web.lab.example</elem>
+</table>
+<table key="issuer">
+<elem key="commonName">web.lab.example</elem>
+</table>
+<table key="pubkey">
+<elem key="type">rsa</elem>
+<elem key="bits">2048</elem>
+<elem key="modulus">A39991C4DFC9C8009EBFE4783EFBD60D13BD2746831192FEE99C3FB8D398D26407307BE6A6F743AF2697422C9220273472E180F688ACC0BD0821A2277F2E554F19429846AE36B5A40752816FBCCDB7EA2FFBA949535A03710A599ACFB65E56B2908B59DE11A923A3A9789DA632FEAA069ABA5C00479731BCD52BB426C76583B7E939C3E2723E912F775DE5D0090ADF2EB1F68EAE70F2616CA65AA3FE7356B66D551A43CA91B27EF6DF673B2BF61E689233E896B10216D26AB61BA6C5900A07A08E32AE4BE49ED3693E919380CB797CC844B5F9C74E1DC5FC279F38583B042F2C1AA6B6934CC31E47216C00091788C53196929A828A6D71D272A9CB90714B9381</elem>
+<elem key="exponent">65537</elem>
+</table>
+<elem key="sig_algo">sha256WithRSAEncryption</elem>
+<table key="validity">
+<elem key="notBefore">2024-01-01T00:00:00</elem>
+<elem key="notAfter">2025-01-01T00:00:00</elem>
+</table>
+<elem key="md5">c5080cb5d7ad7d9a9f6b15bd8be8fc78</elem>
+<elem key="sha1">04a5c78135456cb686af0df2d7a7b5e35fbe1019</elem>
+<elem key="pem">-&#45;&#45;&#45;&#45;BEGIN CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;MIICrTCCAZWgAwIBAgIBATANBgkqhkiG9w0BAQsFADAaMRgwFgYDVQQDDA93ZWIu&#xa;bGFiLmV4YW1wbGUwHhcNMjQwMTAxMDAwMDAwWhcNMjUwMTAxMDAwMDAwWjAaMRgw&#xa;FgYDVQQDDA93ZWIubGFiLmV4YW1wbGUwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAw&#xa;ggEKAoIBAQCjmZHE38nIAJ6/5Hg++9YNE70nRoMRkv7pnD+405jSZAcwe+am90Ov&#xa;JpdCLJIgJzRy4YD2iKzAvQghoid/LlVPGUKYRq42taQHUoFvvM236i/7qUlTWgNx&#xa;Clmaz7ZeVrKQi1neEakjo6l4naYy/qoGmrpcAEeXMbzVK7Qmx2WDt+k5w+JyPpEv&#xa;d13l0AkK3y6x9o6ucPJhbKZao/5zVrZtVRpDypGyfvbfZzsr9h5okjPolrECFtJq&#xa;thumxZAKB6COMq5L5J7TaT6Rk4DLeXzIRLX5x04dxfwnnzhYOwQvLBqmtpNMwx5H&#xa;IWwACReIxTGWkpqCim1x0nKpy5BxS5OBAgMBAAEwDQYJKoZIhvcNAQELBQADggEB&#xa;ACx/VDZ4ppBR0bU+Mx20G/ihw3BspGcI/Yw5+EgYweByanxvhb+N6+fWL86IUFa3&#xa;sJAvpQ08yDmcY3TL1fjSzEpvAYX38IF28miaH1+zvhRmQAhK+Ri9PQNpxbiMWOIn&#xa;HIGmqrIGIRm7xzgNE9wY2bVOrpLN/tCKZrpHzlb6Uom08Frgyn+m0Gu9VafSAWfG&#xa;rJtqIvywzYp2FDrKJdAagShyVJmCQk4KkSnyFp7A2qdkUTC1vOogtPWLJ8PXIA8W&#xa;diNOUkVpzKzR0guPWxmA3r/DYnvMJIf0HRCOGp56rEBTuA+8PL147Ut6H8IHTZM9&#xa;VsijY0lYAzztnpidhKnT+tw=&#xa;-&#45;&#45;&#45;&#45;END CERTIFICATE-&#45;&#45;&#45;&#45;&#xa;</elem>
+</script></port>
+<port protocol="tcp" portid="2222"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="ssh" product="OpenSSH" version="9.6p1 Ubuntu 3ubuntu13.19" extrainfo="Ubuntu Linux; protocol 2.0" ostype="Linux" method="probed" conf="10"><cpe>cpe:/a:openbsd:openssh:9.6p1</cpe><cpe>cpe:/o:linux:linux_kernel</cpe></service></port>
+<port protocol="tcp" portid="6379"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="redis" product="Redis key-value store" version="7.0.15" extrainfo="64 bits" method="probed" conf="10"><cpe>cpe:/a:redislabs:redis:7.0.15</cpe><cpe>cpe:/a:redis:redis:7.0.15</cpe></service><script id="redis-info" output="&#xa;  Version: 7.0.15&#xa;  Operating System: Linux 6.18.44-fc-v114 x86_64&#xa;  Architecture: 64 bits&#xa;  Process ID: 955&#xa;  Used CPU (sys): 0.054018&#xa;  Used CPU (user): 0.036479&#xa;  Connected clients: 1&#xa;  Connected slaves: 0&#xa;  Used memory: 1015.95K&#xa;  Role: master&#xa;  Bind addresses: &#xa;    0.0.0.0&#xa;  Client connections: &#xa;    192.0.2.2"><elem key="Version">7.0.15</elem>
+<elem key="Operating System">Linux 6.18.44-fc-v114 x86_64</elem>
+<elem key="Architecture">64 bits</elem>
+<elem key="Process ID">955</elem>
+<elem key="Used CPU (sys)">0.054018</elem>
+<elem key="Used CPU (user)">0.036479</elem>
+<elem key="Connected clients">1</elem>
+<elem key="Connected slaves">0</elem>
+<elem key="Used memory">1015.95K</elem>
+<elem key="Role">master</elem>
+<table key="Bind addresses">
+<elem>0.0.0.0</elem>
+</table>
+<table key="Client connections">
+<elem>192.0.2.2</elem>
+</table>
+</script></port>
+<port protocol="tcp" portid="11211"><state state="open" reason="syn-ack" reason_ttl="64"/><service name="memcached" product="Memcached" version="1.6.24" extrainfo="uptime 36 seconds" method="probed" conf="10"><cpe>cpe:/a:memcached:memcached:1.6.24</cpe></service><script id="memcached-info" output="&#xa;  Process ID: 961&#xa;  Uptime: 42 seconds&#xa;  Server time: 2026-10-13T17:32:45&#xa;  Architecture: 64 bit&#xa;  Used CPU (user): 0.015634&#xa;  Used CPU (system): 0.000000&#xa;  Current connections: 1&#xa;  Total connections: 5&#xa;  Maximum connections: 1024&#xa;  TCP Port: 11211&#xa;  UDP Port: 0&#xa;  Authentication: no"><elem key="Process ID">961</elem>
+<elem key="Uptime">42 seconds</elem>
+<elem key="Server time">2026-10-13T17:32:45</elem>
+<elem key="Architecture">64 bit</elem>
+<elem key="Used CPU (user)">0.015634</elem>
+<elem key="Used CPU (system)">0.000000</elem>
+<elem key="Current connections">1</elem>
+<elem key="Total connections">5</elem>
+<elem key="Maximum connections">1024</elem>
+<elem key="TCP Port">11211</elem>
+<elem key="UDP Port">0</elem>
+<elem key="Authentication">no</elem>
+</script></port>
+</ports>
+<times srtt="65" rttvar="1244" to="100000"/>
+</host>
+<runstats><finished time="1791912765" timestr="Tue Oct 13 19:32:45 2026" summary="Nmap done at Tue Oct 13 19:32:45 2026; 1 IP address (1 host up) scanned in 12.55 seconds" elapsed="12.55" exit="success"/><hosts up="1" down="0" total="1"/>
+</runstats>
+</nmaprun>

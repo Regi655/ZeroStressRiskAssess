@@ -1,0 +1,4 @@
+/usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-ptp-helper cap_net_bind_service,cap_net_admin,cap_sys_nice=ep
+/usr/local/bin/backup-tool cap_dac_read_search=ep
+/opt/capdemo/python3 cap_setuid=ep
+/opt/capdemo/webserver cap_net_bind_service=ep

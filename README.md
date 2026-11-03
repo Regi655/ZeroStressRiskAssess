@@ -21,13 +21,14 @@ network and then logs in over SSH), **from inside** (`--local`, on the machine i
 The report is first a plaintext **draft** kept on the controller; after reviewing it, `zsra-finalize` omits the
 details too sensitive to circulate, encrypts it for the recipient and signs it. `zsra-compare` compares two runs on
 the same machine: what was fixed, what is new, what is still there. `zsra-inventory` assesses a list of machines
-and writes a summary table; every report also comes as a PDF.
+and writes a summary table; every report also comes as a PDF. `zsra-web` does the same work from a **web
+interface** on the controller (start assessments, follow them live, browse and compare reports).
 
-![Risk matrix from the lab](docs/screenshot-matrix.png)
+![Risk matrix from the lab](ZeroStressRiskAssess/docs/screenshot-matrix.png)
 
 *Real report from the Docker lab included in the repository (fake data and credentials). Full example:
-[`docs/sample-report.html`](docs/sample-report.html) (download it and open it in a browser) and
-[`docs/sample-report.md`](docs/sample-report.md).*
+[`docs/sample-report.html`](ZeroStressRiskAssess/docs/sample-report.html) (download it and open it in a browser) and
+[`docs/sample-report.md`](ZeroStressRiskAssess/docs/sample-report.md).*
 
 ---
 
@@ -131,6 +132,7 @@ is intended only for automation in authorised contexts).
 ## Table of contents
 
 - [Disclaimer](#disclaimer) (including the [international legal framework](#-international-legal-framework))
+- [What's new in 1.4.0](#whats-new-in-140)
 
 1. [How it works in brief](#1-how-it-works-in-brief)
 2. [Requirements](#2-requirements)
@@ -147,6 +149,23 @@ is intended only for automation in authorised contexts).
 13. [Repository layout](#13-repository-layout)
 14. [Coming soon](#14-coming-soon)
 15. [References](#15-references)
+
+---
+
+## What's new in 1.4.0
+
+- **Web interface** (`zsra-web`, built with Streamlit): start assessments from the browser and follow them live,
+  browse, filter and compare the reports. It listens on this machine only and asks for an access token
+  ([section 5](#web-interface-zsra-web)).
+- **Safer `--recover`**: it removes only the tools zsra installed and their dependencies. Packages that appeared on the
+  target in the meantime (a kernel update, packages installed by the owner) are listed and left alone; before, they
+  made the removal check fail and the target could not be cleaned up at all
+  ([interrupted run](#interrupted-run)).
+- **Console fixes**: arrow-up and backspace no longer redraw only part of the line, the terminal is restored after
+  every command (no more frozen prompt after a password question or a Ctrl-C), `zsra scan ...` typed inside the
+  console works, and `scan -h HOST` is read as the host instead of opening the help.
+- **Tests and CI in the repository**: the test suite (`ZeroStressRiskAssess/tests/`) is published and runs on every push
+  and pull request on Python 3.9, 3.12 and 3.14 ([section 13](#13-repository-layout)).
 
 ---
 
@@ -258,7 +277,7 @@ family, `apt` and `dpkg -V` on Debian/Ubuntu.
 
 ```bash
 git clone <URL-of-this-repository> ZeroStressRiskAssess
-cd ZeroStressRiskAssess
+cd ZeroStressRiskAssess/ZeroStressRiskAssess   # the project is in this subdirectory of the repository
 ./setup.sh                 # creates .venv, installs ZeroStressRiskAssess, downloads Lynis, checks the tools
 ```
 
@@ -301,6 +320,17 @@ every new terminal starts with it inactive. Without activating `.venv`, `.venv/b
 `.venv/bin/python3 -m zerostressriskassess ...` also work (the Python package uses the long lowercase name, as
 required by Python naming conventions).
 
+**Common mistakes.** `activate` is a shell script: `source .venv/bin/activate`, not `python3 .venv/bin/activate`
+(that gives `SyntaxError: unmatched ')'`). Likewise `python3 .venv/bin/zsra` runs the *system* Python, which does not
+see the packages of `.venv` (`ModuleNotFoundError: No module named 'zerostressriskassess'`): run `.venv/bin/zsra`
+directly.
+
+**Web interface (optional).** It needs Streamlit, which is not installed by default:
+
+```bash
+.venv/bin/pip install -e '.[web]'   # adds the zsra-web command
+```
+
 For Docker, after installing it add your user to the `docker` group and log in again:
 `sudo usermod -aG docker $USER`.
 
@@ -342,7 +372,7 @@ Result (counts: C=critical H=high M=medium L=low):
 4 of 4 profiles as expected. Reports in reports/lab-PROFILE/.
 ```
 
-![Report of the secure profile: overall risk LOW](docs/screenshot-secure.png)
+![Report of the secure profile: overall risk LOW](ZeroStressRiskAssess/docs/screenshot-secure.png)
 
 *The `secure` profile passes: only two low problems remain (Lynis suggestions and recently modified account files,
 which is normal for a freshly created machine).*
@@ -422,8 +452,43 @@ zsra > clear                                   # clear the screen
 zsra > exit                                    # exit (also quit or Ctrl-D)
 ```
 
+Inside the console commands are written **without** `zsra` in front (`scan ...`, not `zsra scan ...`; the extra
+`zsra` is dropped if typed out of habit). The host is written without an option: `-h` means help, so `scan -h HOST` is
+read as `scan HOST` and the console says so.
+
 The command history is stored in `~/.local/state/zsra/history` (mode 600: it contains target IPs and user names).
 Passwords are never typed into commands: `--ask-pass` / `--ask-sudo-pass` prompt for them without echoing.
+
+### Web interface (`zsra-web`)
+
+The same work as the console, from the browser. Install it once (section 3), then:
+
+```bash
+.venv/bin/zsra-web                          # opens the browser at http://127.0.0.1:8501/?token=...
+.venv/bin/zsra-web --port 8600 --no-browser --out-dir ~/assessments
+```
+
+| Section | What it does |
+|---|---|
+| **New assessment** | form for the three kinds of run (assessment over SSH, external reconnaissance, recovery) with every option of the command line; the owner's authorisation must be confirmed |
+| **Runs** | live log of every run (refreshed every 2 seconds), **Stop** button, "Open the report" at the end; a recovery first shows a preview of the packages and removes them only after confirmation |
+| **Reports** | overall risk and counts, risk table with filters and details (evidence, remediation, MITRE/CIS), 5×5 matrix, findings, the full HTML report, downloads of every format |
+| **Compare** | two runs of the same target, as `zsra-compare` |
+| **Tools** | which external programs are present on the controller, as the console's `tools` |
+
+How it is protected and how it behaves:
+
+- it listens on **127.0.0.1 only** and every browser session must present a **random token**, new at every start
+  and printed in the terminal: the interface starts assessments with your SSH keys, so other users of the machine
+  must not reach it. From another computer use an SSH tunnel: `ssh -L 8501:127.0.0.1:8501 CONTROLLER`;
+- **passwords** typed in the form reach the run through its standard input and stay in memory only: never on the
+  command line (visible to every user with `ps`), in the environment (inherited by nmap) or in the logs;
+- every assessment is a **separate process**: closing the page or restarting `zsra-web` does not stop it. **Stop**
+  is the same as Ctrl-C, so the cleanup on the target still runs. The state of the runs is kept in
+  `REPORTS/.jobs/` (mode 700, files 600);
+- the HTML report is shown in an isolated frame, and Streamlit's usage statistics are turned off.
+
+Ctrl-C in the terminal of `zsra-web` stops the interface, **not** the runs in progress.
 
 ### The mascot
 
@@ -481,11 +546,18 @@ zsra HOST -u admin -i KEY --nmap-ports -          # all 65535 ports (slower)
 ### Interrupted run
 
 If the assessment is interrupted abruptly (lost connection, killed process), ClamAV, chkrootkit and smartmontools may
-have been left installed:
+have been left installed. The next assessment of that machine stops with `StaleManifest: A manifest from an
+interrupted run exists on the target` until it is cleaned up:
 
 ```bash
 zsra HOST -u admin -i KEY --recover
 ```
+
+`--recover` removes **only what zsra installed**: the tool packages it planned to install (recorded in the manifest
+before installing) and the dependencies they pulled in. Anything else installed after the interrupted run, for
+example a kernel update or the owner's own packages, is listed as `Installed after the snapshot but NOT by zsra, left
+untouched` and is not removed. The list to remove is shown and confirmed before anything happens, and apt/dnf first
+simulate the removal: if it would take away any other package, nothing is removed.
 
 ### External reconnaissance only (`--recon-only`)
 
@@ -650,6 +722,7 @@ host key, unsupported distribution), `130` interrupted with Ctrl-C.
 `--ask-key-pass`, `--accept-new-hostkey`. `zsra-compare BEFORE AFTER [-o FILE.md]`.
 `zsra-inventory FILE [--yes] [--out-dir DIR] [-- OPTIONS]` (exit `2` if a machine was not assessed).
 `zsra-pdf REPORT_DIR` writes `report.pdf` for an existing report. All of them exit with `2` on error.
+`zsra-web [--port 8501] [--out-dir ./reports] [--no-browser]` starts the web interface (section 5).
 
 ---
 
@@ -773,7 +846,7 @@ commit reports** of real machines (the examples in `docs/` come from the lab and
 
 At the end, a summary with the overall risk and the first 10 rows of the table is printed on the terminal.
 
-![Risk table](docs/screenshot-table.png)
+![Risk table](ZeroStressRiskAssess/docs/screenshot-table.png)
 
 In the table each row states **why** it has that likelihood: for R01, "port 22 reachable from the controller" is what
 nmap actually measured. Had the port been closed by the firewall, the likelihood
@@ -788,7 +861,8 @@ would have dropped by 2.
   `binutils`: on normal systems it is already there and is left untouched; on minimal systems it is installed and
   removed with chkrootkit. On the RHEL family `epel-release` is installed if needed and removed too. smartmontools is
   not installed in a container. A manifest in `/var/lib/zerostressriskassess` records what to remove, even after an
-  interruption (`--recover`).
+  interruption (`--recover`). Only those packages are removed: anything else that appeared during the run or before a
+  `--recover` (for example an automatic kernel update) is listed in the report and left installed.
 - A package removed earlier **without purge** (state `rc` in `dpkg -l`: its configuration files are still there) counts
   as *not installed*: the tool installs it, and at the end removes it **without** purging, so the owner's configuration
   files stay exactly as they were (verified with smartmontools and an edited `/etc/smartd.conf`, same checksum).
@@ -834,6 +908,10 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 | Message / symptom | Cause and solution |
 |---|---|
 | `zsh: command not found: zsra` | the virtual environment is not active: `source .venv/bin/activate` (or use `.venv/bin/zsra`) |
+| `SyntaxError: unmatched ')'` on `.venv/bin/activate` | it is a shell script: `source .venv/bin/activate`, not `python3 .venv/bin/activate` |
+| `ModuleNotFoundError: No module named 'zerostressriskassess'` | `python3 .venv/bin/zsra` uses the system Python: run `.venv/bin/zsra` (or activate `.venv` first) |
+| console: `Unknown command: zsra` | inside the console commands have no `zsra` in front: `scan HOST -u USER ...` |
+| console: arrow-up or backspace redraw only part of the line | fixed in 1.4.0: update |
 | `SSHException: Server '...' not found in known_hosts` | the target is not in `known_hosts`: run `ssh user@host` once and verify the fingerprint, or use `--accept-new-hostkey` |
 | `Root privileges are required` | the user has no sudo, or sudo asks for a password: add `--ask-sudo-pass` |
 | in the report: `nmap / ssh-audit / grype / trivy not installed` | install it on the **controller** (section 2) or ignore it: the check is skipped and declared |
@@ -846,7 +924,10 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 | `./lab/lab.sh up`: `permission denied ... docker.sock` | your user is not in the `docker` group (section 3) |
 | lab: network already in use | `LAB_PREFIX=10.99.0 ./lab/lab.sh up` |
 | lab: `container name ... is already in use` after updating the repository | containers created with the old Italian profile names: `docker ps -a --filter name=zerostressriskassess-lab-` and remove them with `docker rm -f NAME` |
-| assessment interrupted midway | `zsra HOST ... --recover` |
+| assessment interrupted midway, or `StaleManifest: A manifest from an interrupted run exists` | `zsra HOST ... --recover` |
+| `--recover`: `Cancelled: the removal would touch other packages` | the packages to remove are needed by something else installed on the target: nothing was removed. Check the listed packages by hand. Before 1.4.0 this also happened when anything (e.g. a kernel update) had been installed after the interrupted run: update |
+| `zsra-web`: `Access denied` in the browser | open the address printed in the terminal by `zsra-web`, with its `?token=...`: the token changes at every start |
+| `zsra-web`: `Streamlit is not installed` | `.venv/bin/pip install -e '.[web]'` |
 | `setup.sh`: `pip ... trusts the compromised eMudhra CAs` | an existing `.venv` created before October 2026: run `./setup.sh` again (it installs pip 26.2.2 by hash) |
 | `setup.sh`: `ca-certificates ... still trusts emSign` | `sudo apt update && sudo apt install --only-upgrade ca-certificates` |
 | `UnsupportedOS: ...: Arch family (package managers: pacman)` | the distribution is not supported for the full assessment (section 2): use `--recon-only`, or assess a supported machine |
@@ -859,39 +940,55 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 ## 13. Repository layout
 
 ```
-ZeroStressRiskAssess/
+(repository root)
 ├── README.md                 this file
-├── setup.sh                  controller preparation
-├── pyproject.toml            Python package and the zsra, zsra-finalize, zsra-compare, zsra-inventory, zsra-pdf commands
-├── requirements.txt          Python dependencies (paramiko)
-├── zerostressriskassess/
-│   ├── cli.py                parameters and terminal summary
-│   ├── console.py            interactive console (`zsra` without arguments)
-│   ├── banner.py, mascot.txt   startup mascot (the .txt file can be replaced)
-│   ├── orchestrator.py       order of the checks, guaranteed cleanup, reconnaissance-only mode
-│   ├── osinfo.py             distribution recognition (os-release, families, tested releases)
-│   ├── pkgmgr.py             apt and dnf/yum
-│   ├── finalize.py           report phase 2: omissions, age encryption, SSH signature, upload (`zsra-finalize`)
-│   ├── compare.py, fingerprint.py   comparison of two runs (`zsra-compare`)
-│   ├── inventory.py          several machines from an inventory file (`zsra-inventory`)
-│   ├── pdfreport.py          report.pdf with ReportLab (`zsra-pdf`)
-│   ├── risk.py               ★ impact × likelihood model (rules, scales, exposure)
-│   ├── correlate.py          merging findings into problems, MITRE/CIS
-│   ├── report.py             Markdown/JSON report
-│   ├── htmlreport.py         HTML report (the one to read)
-│   ├── cve.py, vercmp.py     package inventory, SBOMs, Grype/Trivy, dpkg version comparison
-│   ├── portable.py           portable Lynis
-│   ├── toolmgr.py            ClamAV/chkrootkit/smartmontools installation and removal, rkhunter detection
-│   ├── ssh_client.py         remote (SSH) and local execution
-│   └── scanners/             one module per check
-├── docs/                     sample report and screenshots (from the lab)
-├── lab/                      Docker lab: 4 Ubuntu 24.04 machines (lab.sh, profiles/*.sh)
-├── tools/                    CVE verification utilities
-└── vendor/lynis/             Lynis (downloaded by setup.sh, not versioned)
+├── .github/workflows/test.yml   CI: pyflakes and tests on Python 3.9, 3.12, 3.14 at every push and pull request
+└── ZeroStressRiskAssess/     the project
+    ├── setup.sh                  controller preparation
+    ├── pyproject.toml            Python package and the zsra, zsra-finalize, zsra-compare, zsra-inventory, zsra-pdf, zsra-web commands
+    ├── requirements.txt          Python dependencies (paramiko)
+    ├── requirements-dev.txt      test dependencies (pyflakes)
+    ├── zerostressriskassess/
+    │   ├── cli.py                parameters and terminal summary
+    │   ├── console.py            interactive console (`zsra` without arguments)
+    │   ├── web/                  web interface (`zsra-web`): app.py pages, jobs.py/runner.py detached runs
+    │   ├── banner.py, mascot.txt   startup mascot (the .txt file can be replaced)
+    │   ├── orchestrator.py       order of the checks, guaranteed cleanup, reconnaissance-only mode
+    │   ├── osinfo.py             distribution recognition (os-release, families, tested releases)
+    │   ├── pkgmgr.py             apt and dnf/yum
+    │   ├── finalize.py           report phase 2: omissions, age encryption, SSH signature, upload (`zsra-finalize`)
+    │   ├── compare.py, fingerprint.py   comparison of two runs (`zsra-compare`)
+    │   ├── inventory.py          several machines from an inventory file (`zsra-inventory`)
+    │   ├── pdfreport.py          report.pdf with ReportLab (`zsra-pdf`)
+    │   ├── risk.py               ★ impact × likelihood model (rules, scales, exposure)
+    │   ├── correlate.py          merging findings into problems, MITRE/CIS
+    │   ├── report.py             Markdown/JSON report
+    │   ├── htmlreport.py         HTML report (the one to read)
+    │   ├── cve.py, vercmp.py     package inventory, SBOMs, Grype/Trivy, dpkg version comparison
+    │   ├── portable.py           portable Lynis
+    │   ├── toolmgr.py            ClamAV/chkrootkit/smartmontools installation and removal, rkhunter detection
+    │   ├── ssh_client.py         remote (SSH) and local execution
+    │   └── scanners/             one module per check
+    ├── tests/                    test suite: fake target, recorded output (tests/README.md, tests/fixtures/README.md)
+    ├── docs/                     sample report and screenshots (from the lab)
+    ├── lab/                      Docker lab: 4 Ubuntu 24.04 machines (lab.sh, profiles/*.sh)
+    ├── tools/                    CVE verification utilities
+    └── vendor/lynis/             Lynis (downloaded by setup.sh, not versioned)
 ```
 
 To add a check: a module in `zerostressriskassess/scanners/` returning a `ScanResult`, its registration in
 `scanners/__init__.py` and, if needed, a rule in `risk.py` with impact, likelihood and remediation.
+
+Tests: no virtual machine and no connection needed (a fake target answers with recorded output):
+
+```bash
+.venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pyflakes zerostressriskassess tests tools
+.venv/bin/python -m unittest discover -s tests -t .
+```
+
+The same commands run on GitHub at every push and pull request. The web interface tests are skipped when Streamlit is
+not installed.
 
 ---
 
@@ -919,7 +1016,8 @@ Planned, not yet available. Each item from a real run carries the case that show
 
 Done in version 1.x, for the record: RHEL family support, `--recon-only`, two-phase report (encryption and
 signature), comparison of two runs, resources and disks checks, rkhunter warnings verified before rating,
-`--no-install`, inventory of several machines, PDF report. Rocky 9 and a real laptop (NVMe SMART) were run end to
+`--no-install`, inventory of several machines, PDF report; in 1.4.0 the web interface, a `--recover` that removes only
+zsra's own packages, and tests with CI in the repository. Rocky 9 and a real laptop (NVMe SMART) were run end to
 end on 2026-10-22; a failing disk has still never been seen, so the SMART warnings are tested on output written in
 smartctl's format.
 

@@ -1,0 +1,5 @@
+debian-sys-maint	localhost	caching_sha2_password	0	0
+mysql.infoschema	localhost	caching_sha2_password	0	1
+mysql.session	localhost	caching_sha2_password	0	1
+mysql.sys	localhost	caching_sha2_password	0	1
+root	localhost	auth_socket	1	0
