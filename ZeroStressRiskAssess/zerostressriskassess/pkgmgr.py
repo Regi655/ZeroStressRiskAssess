@@ -35,6 +35,10 @@ class PkgManager:
     def simulate_remove(self, pkgs):
         return set()
 
+    def dep_closure(self, pkgs):
+        """Installed packages that `pkgs` need, directly or indirectly (pkgs included). None = cannot tell."""
+        return None
+
     def config_only(self):
         return set()
 
@@ -135,6 +139,20 @@ class Apt(PkgManager):
         return {l.split()[1] for l in r.out.splitlines()
                 if l.startswith(("Purg ", "Remv ")) and len(l.split()) > 1}
 
+    def dep_closure(self, pkgs):
+        """`apt-cache depends --recurse --installed`: every INSTALLED package reachable from pkgs through Depends and
+        Pre-Depends (Recommends/Suggests excluded, as at installation). Package names are printed at column 0,
+        dependency lines are indented; virtual packages appear as <name> and are skipped."""
+        pkgs = list(pkgs)
+        if not pkgs:
+            return set()
+        r = self.rem.run("apt-cache depends --recurse --installed --no-recommends --no-suggests --no-conflicts "
+                         "--no-breaks --no-replaces --no-enhances " + _q(pkgs), timeout=300)
+        if r.rc != 0:
+            return None
+        names = {l.strip() for l in r.out.splitlines() if l and not l[0].isspace() and not l.startswith("<")}
+        return names | set(pkgs)
+
     def remove(self, pkgs, keep_config=()):
         # purge also removes configuration files and data (e.g. the ClamAV signature database).
         # keep_config: packages whose configuration files were ALREADY there before us (removed earlier without
@@ -209,6 +227,20 @@ class Dnf(PkgManager):
             return set(pkgs)
         needed_by = set(re.findall(r"needed by \(installed\) (\S+)", r.out))
         return (set(pkgs) | needed_by) if needed_by else None   # any other error: NOT verifiable
+
+    def dep_closure(self, pkgs):
+        """Installed requirements of pkgs, followed until nothing new appears (repoquery --resolve is one level)."""
+        seen, todo = set(), set(pkgs)
+        for _ in range(30):   # dependency chains are short: the bound only guards against surprises
+            if not todo:
+                return seen
+            seen |= todo
+            r = self.rem.run(f"{self.bin} -q repoquery --installed --requires --resolve --qf '%{{name}}\\n' "
+                             + _q(sorted(todo)), sudo=True, timeout=300)
+            if r.rc != 0:
+                return None
+            todo = set(r.out.split()) - seen
+        return None
 
     def remove(self, pkgs, keep_config=()):
         r = self.rem.run(f"{self.bin} remove -y " + self.NO_AUTOREMOVE + _q(pkgs), sudo=True, timeout=900)

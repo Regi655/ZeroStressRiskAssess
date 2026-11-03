@@ -13,7 +13,10 @@ Safeguards against a wrong removal:
      it is aborted;
   3. a maximum number of packages can be removed automatically;
   4. a MANIFEST on the target records the initial snapshot, so `--recover` can clean up later if
-     the connection drops midway.
+     the connection drops midway;
+  5. only OUR packages are removed: the tools we installed or upgraded and the dependencies they pulled in.
+     Anything else that appeared meanwhile (a kernel update from unattended-upgrades, packages the owner
+     installed between an interrupted run and --recover) is left alone.
 """
 from __future__ import annotations
 
@@ -71,6 +74,7 @@ class ToolManager:
         self._conf_before: set[str] = set()
         self._prepared = False            # True only after a successful snapshot + manifest
         self.installed: list[str] = []    # packages installed by us during this run
+        self._planned: set[str] = set()   # tool packages we install or upgrade (roots of what we may remove)
 
     def _note(self, **kw):
         self.log.append(kw)
@@ -84,6 +88,7 @@ class ToolManager:
             "policy_rc_created": getattr(self.pm, "_policy_created", False),
             "before": sorted(self._before),
             "config_only": sorted(self._conf_before),
+            "planned": sorted(self._planned),
         })
         # Uploaded first to the SSH user's home directory, then moved into place by root with mode 600
         # (it only contains package names, but nobody else needs it).
@@ -176,6 +181,11 @@ class ToolManager:
                 else:
                     self._note(tool=tool, package=pkg, action="already present and up to date", frm=inst)
 
+        self._planned = set(to_install) | set(to_upgrade) | ({"epel-release"} if epel_tried else set())
+        if self._planned and not self._write_manifest():   # recorded BEFORE installing, for --recover
+            self._note(tool="*", package="-", action="manifest NOT updated with the planned packages: "
+                       "--recover would fall back to the default tool list")
+
         if to_install:
             self.installed = list(to_install)
             r = self.pm.install(to_install)
@@ -218,6 +228,10 @@ class ToolManager:
                 self._note(tool="*", package=",".join(new_pkgs), action="NOT removed (--keep-tools); "
                            "manifest kept: use --recover to clean up")
                 return
+            new_pkgs, foreign = ours(self.pm, self._planned, new_pkgs, after)
+            if foreign:
+                self._note(tool="*", package=",".join(foreign), action="appeared during the run but NOT "
+                           "installed by us (e.g. automatic updates): left untouched")
             if not new_pkgs:
                 self._note(tool="*", package="-", action="no packages to remove")
                 self._delete_manifest()
@@ -245,6 +259,31 @@ class ToolManager:
             self.pm.allow_daemons()
 
 
+def default_roots(osinfo: OSInfo) -> set[str]:
+    """Tool packages zsra may have installed: used when the manifest predates the "planned" list."""
+    key = osinfo.family_key
+    roots = {p for spec in TOOLS.values() for p in spec[key]}
+    return roots | ({"epel-release"} if key == "dnf" else set())
+
+
+def ours(pm, roots, new, installed):
+    """Split `new` (packages appeared since the snapshot) into (ours, foreign).
+
+    Ours = the root tool packages still installed plus everything they depend on, restricted to `new`. If the
+    dependencies cannot be computed, everything is treated as ours: the removal simulation still blocks any
+    removal that would take away a package not in the list.
+    """
+    new = sorted(new)
+    roots = set(roots) & set(installed)
+    if not roots:
+        return [], new
+    closure = pm.dep_closure(sorted(roots))
+    if closure is None:
+        return new, []
+    mine = [p for p in new if p in closure]
+    return mine, [p for p in new if p not in closure]
+
+
 # ---------------------------------------------------------------------- recovery
 def recover_interrupted(rem, osinfo: OSInfo, confirm, log=print) -> bool:
     """Clean up the target after an interrupted run, using the manifest.
@@ -269,9 +308,16 @@ def recover_interrupted(rem, osinfo: OSInfo, confirm, log=print) -> bool:
         return False
 
     pm = make_pm(rem, osinfo)
-    new, bad = split_pkgs(pm.snapshot() - before)
+    now = pm.snapshot()
+    new, bad = split_pkgs(now - before)
     if new:
-        log(f"Packages installed after the interrupted run ({len(new)}): {', '.join(new)}")
+        roots = set(data.get("planned") or []) or default_roots(osinfo)
+        new, foreign = ours(pm, roots, new, now)
+        if foreign:
+            log(f"Installed after the snapshot but NOT by zsra, left untouched ({len(foreign)}): "
+                f"{', '.join(foreign)}")
+    if new:
+        log(f"Packages installed by the interrupted run ({len(new)}): {', '.join(new)}")
         if pm.can_simulate:
             touched = pm.simulate_remove(new)
             if touched is None or (touched - set(new)):
@@ -289,5 +335,5 @@ def recover_interrupted(rem, osinfo: OSInfo, confirm, log=print) -> bool:
     if data.get("policy_rc_created"):
         rem.run("rm -f /usr/sbin/policy-rc.d", sudo=True)
     rem.run(f"rm -f {MANIFEST}; rmdir {MANIFEST_DIR} 2>/dev/null; true", sudo=True)
-    log("Manifest rimosso: target ripulito.")
+    log("Manifest removed: target cleaned up.")
     return True
