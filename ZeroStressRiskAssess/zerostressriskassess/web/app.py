@@ -20,7 +20,7 @@ from pathlib import Path
 
 import streamlit as st
 
-from zerostressriskassess import __version__
+from zerostressriskassess import __version__, portal
 from zerostressriskassess.compare import compare, to_markdown
 from zerostressriskassess.console import list_reports, tools_status
 from zerostressriskassess.risk import level as risk_level
@@ -130,6 +130,11 @@ def page_new():
                                                   value=last.get("dns_zones", ""))
                 opts["scan_timeout"] = c2.number_input("Maximum minutes per check", 5, 600,
                                                        value=last.get("scan_timeout", 60))
+            cfg = _portal_config()
+            if cfg:
+                opts["upload"] = st.checkbox(f"Upload the report to the portal at the end ({cfg.url})", value=cfg.auto)
+            else:
+                st.caption("Portal not configured: the report stays here (Tools › Portal to connect it).")
             authorised = st.checkbox("I have the system owner's authorisation for this assessment")
         else:
             authorised = True
@@ -278,6 +283,13 @@ def page_reports():
                       for t in rep.get("tools", [])], width="stretch", hide_index=True)
     with t_files:
         st.caption(f"Folder: `{path.parent}`. A plaintext draft: deliver it with `finalize` (encrypted and signed).")
+        cfg = _portal_config()
+        if cfg and st.button(f"Upload to the portal ({cfg.url})", key="portal_upload"):
+            try:
+                ok, line = portal.describe(portal.upload(cfg, path), cfg)
+            except portal.PortalError as exc:
+                ok, line = False, str(exc)
+            (st.success if ok else st.error)(line)
         for name, mime in (("report.html", "text/html"), ("report.pdf", "application/pdf"),
                            ("report.md", "text/markdown"), ("report.json", "application/json"),
                            ("report.json.sha256", "text/plain")):
@@ -390,6 +402,55 @@ def page_tools():
                   for n, ok, w in tools_status()], width="stretch", hide_index=True)
     st.caption("Missing tools are skipped and reported as such.")
     st.caption(f"Reports folder: `{OUT_DIR}`")
+    _portal_settings()
+
+
+def _portal_config():
+    try:
+        return portal.load_config()
+    except portal.PortalError as exc:
+        st.warning(f"Portal: {exc}")
+        return None
+
+
+def _portal_settings():
+    st.subheader("Portal (ZeroStressRiskAssessWeb)")
+    st.caption("The private portal of the suite keeps the reports of every machine and compares them over time. "
+               "It needs an API token: in the portal, Account › API tokens (a token can only upload reports).")
+    cfg = _portal_config()
+    if cfg:
+        st.markdown(f"Connected to **{cfg.url}** · token `{cfg.masked}` · "
+                    f"{'upload after every assessment' if cfg.auto else 'upload only when asked'} · from `{cfg.source}`")
+        c1, c2 = st.columns([1, 4])
+        if c1.button("Check the token"):
+            try:
+                a = portal.check(cfg)
+                (st.success if portal.token_ok(a) else st.error)(
+                    "Token accepted." if portal.token_ok(a) else portal.describe(a, cfg)[1])
+            except portal.PortalError as exc:
+                st.error(str(exc))
+        if cfg.source == str(portal.config_path()) and c2.button("Disconnect (delete the saved token)"):
+            portal.config_path().unlink(missing_ok=True)
+            st.rerun()
+    with st.form("portal_login", clear_on_submit=True):
+        c1, c2 = st.columns(2)
+        url = c1.text_input("Portal address", value=cfg.url if cfg else "", placeholder="https://zsra.example.org")
+        token = c2.text_input("API token", type="password", placeholder="zsra_...")
+        c1, c2 = st.columns(2)
+        ca = c1.text_input("CA file (portal with its own authority)", value=cfg.ca_file if cfg else "",
+                           placeholder="~/zsra-root.crt")
+        auto = c2.checkbox("Upload after every assessment", value=cfg.auto if cfg else True)
+        if st.form_submit_button("Connect" if not cfg else "Connect again"):
+            try:
+                new = portal.Config(portal.check_url(url), token.strip(), ca.strip(), auto)
+                if not new.token:
+                    raise portal.PortalError("the API token is empty")
+                a = portal.check(new)
+                if not portal.token_ok(a):
+                    raise portal.PortalError(portal.describe(a, new)[1])
+                st.success(f"Token accepted: saved in {portal.save_config(new)} (mode 600).")
+            except portal.PortalError as exc:
+                st.error(f"{exc}: not saved.")
 
 
 # ---------------------------------------------------------------------- main

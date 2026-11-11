@@ -23,6 +23,7 @@ zsra-compare = "zerostressriskassess.compare:main"
 zsra-inventory = "zerostressriskassess.inventory:main"
 zsra-pdf = "zerostressriskassess.pdfreport:main"
 zsra-web = "zerostressriskassess.web:main"
+zsra-portal = "zerostressriskassess.portal:main"
 
 [tool.setuptools]
 packages = ["zerostressriskassess", "zerostressriskassess.scanners", "zerostressriskassess.web"]

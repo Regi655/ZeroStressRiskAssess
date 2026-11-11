@@ -24,6 +24,12 @@ the same machine: what was fixed, what is new, what is still there. `zsra-invent
 and writes a summary table; every report also comes as a PDF. `zsra-web` does the same work from a **web
 interface** on the controller (start assessments, follow them live, browse and compare reports).
 
+**The ZeroStressRiskAssess suite.** zsra is the scanner; ZeroStressRiskAssessWeb
+is its private portal, where every user keeps the reports of their machines behind password and 2FA and follows them
+over time (history, comparisons, decisions on each risk, overview of all the machines). `zsra-portal login` connects
+the two once; from then on `zsra ... --upload` (or every assessment, with `--auto`) sends the report to the portal
+([section 5](#uploading-to-the-portal-the-suite)).
+
 ![Risk matrix from the lab](ZeroStressRiskAssess/docs/screenshot-matrix.png)
 
 *Real report from the Docker lab included in the repository (fake data and credentials). Full example:
@@ -132,6 +138,7 @@ is intended only for automation in authorised contexts).
 ## Table of contents
 
 - [Disclaimer](#disclaimer) (including the [international legal framework](#-international-legal-framework))
+- [What's new in 1.5.0](#whats-new-in-150)
 - [What's new in 1.4.0](#whats-new-in-140)
 
 1. [How it works in brief](#1-how-it-works-in-brief)
@@ -151,6 +158,16 @@ is intended only for automation in authorised contexts).
 15. [References](#15-references)
 
 ---
+
+## What's new in 1.5.0
+
+- **zsra and the portal are one suite**: `zsra-portal` saves the address of ZeroStressRiskAssessWeb and an API token
+  (checked first, kept in a file readable only by you), `zsra --upload` uploads the report at the end of the
+  assessment, `zsra-portal login --auto` makes it happen after every assessment. Also in the console (`portal`,
+  `upload N`) and in the web interface (Tools › Portal, upload button on every report)
+  ([section 5](#uploading-to-the-portal-the-suite)).
+- A machine already set up with the portal's agent script (`zsra-upload.sh setup`) needs nothing else: zsra reads its
+  `/etc/zsra/upload.env`.
 
 ## What's new in 1.4.0
 
@@ -443,6 +460,8 @@ zsra > recon 192.168.1.50 --dns-zone example.lab   # external reconnaissance onl
 zsra > finalize reports/192.168.1.50_20261020-160509 --recipient age1... --sign-key ~/.ssh/id_ed25519
 zsra > compare reports/HOST_BEFORE reports/HOST_AFTER   # what was fixed, what is new
 zsra > inventory hosts.txt -- --skip clamav             # several machines, summary table
+zsra > portal login https://zsra.example.org --auto   # connect the portal of the suite (asks for the token)
+zsra > upload 1                                # upload report number 1 to the portal
 zsra > reports                                 # latest reports, newest first, with overall risk
 zsra > open 1                                  # open HTML report number 1 in the browser
 zsra > tools                                   # nmap, ssh-audit, grype, trivy, Lynis: what is present and what is missing
@@ -458,6 +477,43 @@ read as `scan HOST` and the console says so.
 
 The command history is stored in `~/.local/state/zsra/history` (mode 600: it contains target IPs and user names).
 Passwords are never typed into commands: `--ask-pass` / `--ask-sudo-pass` prompt for them without echoing.
+
+### Uploading to the portal (the suite)
+
+ZeroStressRiskAssessWeb is the private portal of the suite:
+it keeps the reports of every machine and compares them over time. zsra uploads to it with a personal **API token**,
+created in the portal under **Account › API tokens**: a token can only upload reports, nothing else, and expires.
+
+```bash
+zsra-portal login https://zsra.example.org --auto   # asks for the token (no echo), checks it, saves it
+zsra 192.168.1.50 -u admin -i ~/.ssh/id_ed25519     # with --auto: assessment, then upload
+zsra 192.168.1.50 -u admin --upload                 # without --auto: upload only when asked
+zsra 192.168.1.50 -u admin --no-upload              # with --auto: skip it once
+zsra-portal upload reports/192.168.1.50_20261111-1000   # a report you already have (or: --latest)
+zsra-portal check | status | logout
+```
+
+Inside the console: `portal login URL --auto`, `upload N` (report N of `reports`). In the web interface: **Tools ›
+Portal** (address, token, CA file) and the **Upload to the portal** button in the *Files* tab of every report.
+
+What is sent and how:
+
+- `report.json` exactly as on disk, with its SHA-256 (`report.json.sha256`): the portal recomputes it and refuses a
+  report changed after the scan. Uploading the same report again is harmless (*already in the portal*);
+- the report reaches the portal as it is, a **draft** in plaintext: the portal is the private place where it is kept.
+  To deliver it to someone else, `zsra-finalize` (encrypted and signed) is still the way;
+- HTTPS only; plain HTTP only to this machine (`http://localhost:8080`, the portal's `./start.sh local`). The certificate
+  is always verified: a portal with its own authority (`./start.sh hosted`) gives you `zsra-root.crt`, pass it with
+  `zsra-portal login https://NAME --ca-file zsra-root.crt`. Redirects are not followed (the token would go along);
+- the token is never on the command line (`ps` would show it): it is asked without echo (`--token-stdin` for
+  scripts) and saved in `~/.config/zsra/portal.json`, mode 600;
+- `--upload` is checked **before** the assessment: a missing configuration stops it right away, not after an hour.
+  If the upload itself fails, the report stays on disk and zsra exits with code `4`.
+
+Where the configuration comes from, first match wins: `ZSRA_PORTAL_URL` + `ZSRA_PORTAL_TOKEN` (+ `ZSRA_PORTAL_CA`,
+`ZSRA_PORTAL_AUTO=1`); the file in `ZSRA_PORTAL_CONFIG` or `~/.config/zsra/portal.json`; `/etc/zsra/upload.env`, written
+by the portal's agent script (`zsra-upload.sh setup`, for weekly scans with systemd), so `sudo zsra --local --upload`
+works on those machines with no other step.
 
 ### Web interface (`zsra-web`)
 
@@ -711,11 +767,14 @@ Verified on the lab: 132 installed packages before and after, no manifest.
 | `--no-install` | no | install nothing on the target: ClamAV, chkrootkit and smartmontools only if already present |
 | `--keep-tools` | no | do not remove ClamAV, chkrootkit and smartmontools at the end (debugging only) |
 | `--recover` | — | cleanup after an interrupted run |
+| `--upload` | no | upload the report to the portal at the end (needs `zsra-portal login`; checked before starting) |
+| `--no-upload` | no | do not upload, even with `zsra-portal login --auto` |
 | `--yes` | no | do not ask for the authorisation confirmation |
 | `--no-banner` | no | do not show the mascot at startup (also `ZSRA_NO_BANNER=1`) |
 
 Exit codes: `0` completed, `1` confirmation denied or `--recover` unsuccessful, `2` error (connection, permissions,
-host key, unsupported distribution), `130` interrupted with Ctrl-C.
+host key, unsupported distribution), `4` assessment completed but the report was **not** uploaded to the portal,
+`130` interrupted with Ctrl-C.
 
 `zsra-finalize` (see `zsra-finalize --help`): `DRAFT_DIR`, `--recipient` (repeatable), `--sign-key`, `--omit ID`
 (repeatable) with `--reason`, `--upload` / `--upload-only` with `--host`, `-u`, `-p`, `-i`, `--ask-pass`,
@@ -723,6 +782,8 @@ host key, unsupported distribution), `130` interrupted with Ctrl-C.
 `zsra-inventory FILE [--yes] [--out-dir DIR] [-- OPTIONS]` (exit `2` if a machine was not assessed).
 `zsra-pdf REPORT_DIR` writes `report.pdf` for an existing report. All of them exit with `2` on error.
 `zsra-web [--port 8501] [--out-dir ./reports] [--no-browser]` starts the web interface (section 5).
+`zsra-portal login URL [--ca-file CA] [--auto] [--token-stdin] | check | status | upload DIR... [--latest] | logout`:
+the portal of the suite (section 5); exit `1` if the portal refused the token or a report, `2` on error.
 
 ---
 
@@ -926,6 +987,10 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 | lab: `container name ... is already in use` after updating the repository | containers created with the old Italian profile names: `docker ps -a --filter name=zerostressriskassess-lab-` and remove them with `docker rm -f NAME` |
 | assessment interrupted midway, or `StaleManifest: A manifest from an interrupted run exists` | `zsra HOST ... --recover` |
 | `--recover`: `Cancelled: the removal would touch other packages` | the packages to remove are needed by something else installed on the target: nothing was removed. Check the listed packages by hand. Before 1.4.0 this also happened when anything (e.g. a kernel update) had been installed after the interrupted run: update |
+| `zsra-portal`: `token refused (wrong, expired or revoked)` | create a new token in the portal (Account › API tokens) and `zsra-portal login URL` again |
+| `zsra-portal`: `the portal's certificate is not trusted` | a portal with its own authority (`./start.sh hosted`): `zsra-portal login https://NAME --ca-file zsra-root.crt` |
+| `zsra-portal`: `plain HTTP would send the token in clear` | use the portal's `https://` address; plain HTTP is accepted only for `localhost` |
+| `--upload: no portal configured` | `zsra-portal login https://PORTAL` first (the assessment did not start) |
 | `zsra-web`: `Access denied` in the browser | open the address printed in the terminal by `zsra-web`, with its `?token=...`: the token changes at every start |
 | `zsra-web`: `Streamlit is not installed` | `.venv/bin/pip install -e '.[web]'` |
 | `setup.sh`: `pip ... trusts the compromised eMudhra CAs` | an existing `.venv` created before October 2026: run `./setup.sh` again (it installs pip 26.2.2 by hash) |
@@ -945,13 +1010,14 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 ├── .github/workflows/test.yml   CI: pyflakes and tests on Python 3.9, 3.12, 3.14 at every push and pull request
 └── ZeroStressRiskAssess/     the project
     ├── setup.sh                  controller preparation
-    ├── pyproject.toml            Python package and the zsra, zsra-finalize, zsra-compare, zsra-inventory, zsra-pdf, zsra-web commands
+    ├── pyproject.toml            Python package and the zsra, zsra-finalize, zsra-compare, zsra-inventory, zsra-pdf, zsra-web, zsra-portal commands
     ├── requirements.txt          Python dependencies (paramiko)
     ├── requirements-dev.txt      test dependencies (pyflakes)
     ├── zerostressriskassess/
     │   ├── cli.py                parameters and terminal summary
     │   ├── console.py            interactive console (`zsra` without arguments)
     │   ├── web/                  web interface (`zsra-web`): app.py pages, jobs.py/runner.py detached runs
+    │   ├── portal.py             upload to the ZeroStressRiskAssessWeb portal (`zsra-portal`, `--upload`)
     │   ├── banner.py, mascot.txt   startup mascot (the .txt file can be replaced)
     │   ├── orchestrator.py       order of the checks, guaranteed cleanup, reconnaissance-only mode
     │   ├── osinfo.py             distribution recognition (os-release, families, tested releases)
@@ -1017,7 +1083,7 @@ Planned, not yet available. Each item from a real run carries the case that show
 Done in version 1.x, for the record: RHEL family support, `--recon-only`, two-phase report (encryption and
 signature), comparison of two runs, resources and disks checks, rkhunter warnings verified before rating,
 `--no-install`, inventory of several machines, PDF report; in 1.4.0 the web interface, a `--recover` that removes only
-zsra's own packages, and tests with CI in the repository. Rocky 9 and a real laptop (NVMe SMART) were run end to
+zsra's own packages, and tests with CI in the repository; in 1.5.0 the upload to the portal of the suite. Rocky 9 and a real laptop (NVMe SMART) were run end to
 end on 2026-10-22; a failing disk has still never been seen, so the SMART warnings are tested on output written in
 smartctl's format.
 

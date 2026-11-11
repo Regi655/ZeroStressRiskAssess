@@ -188,7 +188,7 @@ class Console(cmd.Cmd):
             m, s = rep.get("meta", {}), rep.get("summary", {})
             self.stdout.write(f"{n:>3}  {m.get('timestamp', '?'):16}  {str(m.get('target', '?'))[:18]:18}  "
                               f"{s.get('level', '?'):9}  {len(rep.get('risks', []))}\n")
-        self.stdout.write("To open one in the browser: open N\n")
+        self.stdout.write("To open one in the browser: open N   ·   to send one to the portal: upload N\n")
 
     def do_open(self, line):
         """open [N]
@@ -213,6 +213,38 @@ class Console(cmd.Cmd):
         # Argument list, no shell: the path is never interpreted as a command.
         subprocess.Popen([opener, str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.stdout.write(f"Opened: {path}\n")
+
+    def do_portal(self, line):
+        """portal login URL [--auto] [--ca-file CA] | check | status | upload DIR... | logout
+    The ZeroStressRiskAssessWeb portal of the suite: save the address and the API token (asked without echo),
+    check it, upload reports. Example:
+      portal login https://zsra.example.org --auto
+    Same as the zsra-portal command."""
+        from .portal import main as portal_main
+        argv = self._split(line)
+        if argv is None:
+            return
+        if not argv:
+            self.stdout.write("Usage: portal login URL | check | status | upload DIR | logout   (help portal)\n")
+            return
+        self._run(argv, portal_main)
+
+    def do_upload(self, line):
+        """upload [N]
+    Upload report N of the 'reports' list to the portal (without N: the most recent). Configure it first with
+    'portal login URL'."""
+        from .portal import upload_report
+        rows = self._reports()
+        if not rows:
+            self.stdout.write(f"No reports in {self.out_dir}.\n")
+            return
+        try:
+            n = int(line.strip() or "1")
+            path = rows[n - 1][0].parent
+        except (ValueError, IndexError):
+            self.stdout.write("Invalid number: see 'reports'.\n")
+            return
+        upload_report(path, log=lambda m: self.stdout.write(m + "\n"))
 
     def do_tools(self, line):
         """tools
