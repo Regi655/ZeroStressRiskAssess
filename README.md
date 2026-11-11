@@ -24,11 +24,23 @@ the same machine: what was fixed, what is new, what is still there. `zsra-invent
 and writes a summary table; every report also comes as a PDF. `zsra-web` does the same work from a **web
 interface** on the controller (start assessments, follow them live, browse and compare reports).
 
-**The ZeroStressRiskAssess suite.** zsra is the scanner; ZeroStressRiskAssessWeb
-is its private portal, where every user keeps the reports of their machines behind password and 2FA and follows them
-over time (history, comparisons, decisions on each risk, overview of all the machines). `zsra-portal login` connects
-the two once; from then on `zsra ... --upload` (or every assessment, with `--auto`) sends the report to the portal
-([section 5](#uploading-to-the-portal-the-suite)).
+### Part of the ZeroStressRiskAssess suite
+
+<p align="center">
+  <img src="ZeroStressRiskAssess/docs/suite.svg" width="720"
+       alt="zsra, the scanner, uploads report.json with its SHA-256 over HTTPS with an API token to ZeroStressRiskAssessWeb, the private portal">
+</p>
+
+<p align="center">
+  <b>ZeroStressRiskAssess</b> (this repository) &nbsp;→&nbsp;
+  <a href="https://github.com/Regi655/ZeroStressRiskAssessWeb"><b>ZeroStressRiskAssessWeb</b></a>, the portal
+</p>
+
+zsra is the scanner; [ZeroStressRiskAssessWeb](https://github.com/Regi655/ZeroStressRiskAssessWeb) is its private
+portal, where every user keeps the reports of their machines behind password and 2FA and follows them over time
+(history, comparisons, decisions on each risk, overview of all the machines). `zsra-portal login` connects the two
+once; from then on `zsra ... --upload` (or every assessment, with `--auto`) sends the report to the portal
+([section 5](#uploading-to-the-portal-the-suite)). The portal's repository is private for now: access on request.
 
 ![Risk matrix from the lab](ZeroStressRiskAssess/docs/screenshot-matrix.png)
 
