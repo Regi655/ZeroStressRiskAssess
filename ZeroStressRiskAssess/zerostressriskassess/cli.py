@@ -12,7 +12,7 @@ import os
 import sys
 from pathlib import Path
 
-from . import __version__, banner
+from . import __version__, banner, portal
 from .models import Options
 from .orchestrator import assess, recon, recover
 from .scanners import ALL_NAMES
@@ -60,6 +60,10 @@ def build_parser():
     ap.add_argument("--no-install", action="store_true",
                     help="install NOTHING on the target: ClamAV, chkrootkit and smartmontools only if already present")
     ap.add_argument("--recover", action="store_true", help="clean up the target after an interrupted run")
+    up = ap.add_mutually_exclusive_group()
+    up.add_argument("--upload", action="store_true",
+                    help="upload the report to the ZeroStressRiskAssessWeb portal at the end (zsra-portal login first)")
+    up.add_argument("--no-upload", action="store_true", help="do not upload, even if zsra-portal login --auto was used")
     ap.add_argument("--yes", action="store_true", help="do not ask for confirmation")
     ap.add_argument("--no-banner", action="store_true", help="do not show the startup banner (also: ZSRA_NO_BANNER=1)")
     ap.add_argument("--version", action="version", version=f"ZeroStressRiskAssess {__version__}")
@@ -112,6 +116,21 @@ def main(argv=None, result=None, secrets=None) -> int:
         ap.error(f"-i/--key: file not readable by the current user: {args.key}")
     if not 5 <= args.scan_timeout <= 600:
         ap.error("--scan-timeout: between 5 and 600 minutes")
+    if args.recover and args.upload:
+        ap.error("--recover produces no report: nothing to upload")
+    # The portal is checked BEFORE the assessment: a missing configuration found after an hour of scanning is too late.
+    args.portal = None
+    if not args.recover and not args.no_upload:
+        try:
+            args.portal = portal.load_config()
+        except portal.PortalError as exc:
+            if args.upload:
+                ap.error(f"--upload: {exc}")
+        if args.upload and args.portal is None:
+            ap.error("--upload: no portal configured. First: zsra-portal login https://PORTAL "
+                     "(token from the portal, Account > API tokens)")
+        if args.portal is not None and not (args.upload or args.portal.auto):
+            args.portal = None
 
     if args.recon_only:
         return _recon(args, result)
@@ -163,7 +182,7 @@ def main(argv=None, result=None, secrets=None) -> int:
     if result is not None:
         result["report"] = rep
     print_summary(rep)
-    return 0
+    return _upload(args, rep)
 
 
 def _recon(args, result=None) -> int:
@@ -192,7 +211,18 @@ def _recon(args, result=None) -> int:
     if result is not None:
         result["report"] = rep
     print_summary(rep)
-    return 0
+    return _upload(args, rep)
+
+
+def _upload(args, rep) -> int:
+    """After the summary: upload to the portal if asked (--upload) or configured (login --auto). Exit code 4 =
+    assessment completed, report NOT uploaded (the report is still on disk: zsra-portal upload DIR later)."""
+    if args.portal is None or not rep.get("paths", {}).get("dir"):
+        return 0
+    if portal.upload_report(rep["paths"]["dir"], cfg=args.portal):
+        return 0
+    print(f"    the report is on disk; to retry:  zsra-portal upload '{rep['paths']['dir']}'")
+    return 4
 
 
 def print_summary(rep: dict, top: int = 10):

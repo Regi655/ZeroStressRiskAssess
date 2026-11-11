@@ -156,8 +156,9 @@ class _Tee(io.TextIOBase):
 def _row(m, rc, rep, d: Path, reason: str = "") -> dict:
     s = rep.get("summary") or {}
     path = (rep.get("paths") or {}).get("html", "")
-    status = {0: "ok", 1: "aborted", 130: "interrupted"}.get(rc, f"error (exit code {rc})") if not s else "ok"
-    if status != "ok" and reason:
+    status = {0: "ok", 1: "aborted", 130: "interrupted"}.get(rc, f"error (exit code {rc})") if not s else \
+        ("ok, NOT uploaded to the portal" if rc == 4 else "ok")
+    if not status.startswith("ok") and reason:
         status += f": {reason}"
     return {"line": m["line"], "target": m["target"], "status": status, "level": s.get("level", ""),
             "counts": s.get("counts", {}), "problems": len(rep.get("risks") or []),

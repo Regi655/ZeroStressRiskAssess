@@ -142,6 +142,10 @@ def build_argv(mode: str, host: str, user: str = "", port: int = 22, key: str = 
         argv += ["--skip", *o["skip"]]
     if o.get("scan_timeout") and int(o["scan_timeout"]) != 60:
         argv += ["--scan-timeout", str(int(o["scan_timeout"]))]
+    if o.get("upload") is True:      # None = the portal configuration decides (zsra-portal login --auto)
+        argv.append("--upload")
+    elif o.get("upload") is False:
+        argv.append("--no-upload")
     return argv
 
 

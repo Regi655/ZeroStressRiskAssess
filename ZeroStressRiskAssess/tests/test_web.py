@@ -34,6 +34,12 @@ class ArgvTest(unittest.TestCase):
         argv = jobs.build_argv("recon", "ns1.lab", "admin", 22, "~/.ssh/k", {"clamav": "full", "no_install": True})
         self.assertEqual(argv, ["ns1.lab", "--recon-only"])
 
+    def test_portal_choice(self):
+        self.assertIn("--upload", jobs.build_argv("scan", "h", "u", 22, "", {"upload": True}))
+        self.assertIn("--no-upload", jobs.build_argv("recon", "h", opts={"upload": False}))
+        self.assertFalse({"--upload", "--no-upload"} & set(jobs.build_argv("scan", "h", "u", 22, "", {})))
+        cli.build_parser().parse_args(jobs.build_argv("scan", "h", "u", 22, "", {"upload": True}))
+
     def test_recover(self):
         self.assertEqual(jobs.build_argv("recover", "h", "u", 22, "", {"skip": ["nmap"]}), ["h", "-u", "u", "--recover"])
 
@@ -102,7 +108,8 @@ class AppPagesTest(unittest.TestCase):
         src = next(FIXTURE_REPORTS.glob("*/report.json"), None)
         if src:
             shutil.copytree(src.parent, self.tmp / "reports" / src.parent.name)
-        env = mock.patch.dict(os.environ, {"ZSRA_WEB_TOKEN": "tok", "ZSRA_WEB_OUT_DIR": str(self.tmp / "reports")})
+        env = mock.patch.dict(os.environ, {"ZSRA_WEB_TOKEN": "tok", "ZSRA_WEB_OUT_DIR": str(self.tmp / "reports"),
+                                           "ZSRA_PORTAL_CONFIG": str(self.tmp / "portal.json")})   # not the real one
         env.start()
         self.addCleanup(env.stop)
 
