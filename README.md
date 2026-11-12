@@ -150,6 +150,7 @@ is intended only for automation in authorised contexts).
 ## Table of contents
 
 - [Disclaimer](#disclaimer) (including the [international legal framework](#-international-legal-framework))
+- [What's new in 1.6.0](#whats-new-in-160)
 - [What's new in 1.5.0](#whats-new-in-150)
 - [What's new in 1.4.0](#whats-new-in-140)
 
@@ -170,6 +171,19 @@ is intended only for automation in authorised contexts).
 15. [References](#15-references)
 
 ---
+
+## What's new in 1.6.0
+
+- **Shorter commands.** Save a whole command line once and run it by name:
+  `zsra save laptop 192.168.1.14 -u danielb -i ~/.ssh/riskassess_laptop --clamav-quick`, then just `zsra laptop`
+  (`scan laptop` in the console, a *Saved target* menu in the web interface). The key passphrase and the sudo
+  password are asked **only when needed**, so `--ask-key-pass` and `--ask-sudo-pass` can be left out. One command
+  for everything: `zsra web`, `zsra portal`, `zsra compare`, `zsra finalize`, `zsra inventory`, `zsra pdf`.
+  `./setup.sh` links the commands in `~/.local/bin`: no more `source .venv/bin/activate`
+  ([section 5](#shorter-commands)).
+- **The web interface looks like the portal**: white and orange, the same header, cards, level colours and dark
+  theme as ZeroStressRiskAssessWeb, sections at the top instead of a sidebar.
+- **New banner**: the mascot is replaced by *ZSRA* in red block letters ([the logo](#the-logo)).
 
 ## What's new in 1.5.0
 
@@ -340,14 +354,14 @@ Install whatever is missing, then:
 
 ```bash
 ./setup.sh --check         # re-checks the external programs only
-source .venv/bin/activate  # makes the `zsra` command available
 zsra --version
 ```
 
-The command is `zsra`. It must be run with the virtual environment active (`(.venv)` appears in the prompt), and
-every new terminal starts with it inactive. Without activating `.venv`, `.venv/bin/zsra ...` or
-`.venv/bin/python3 -m zerostressriskassess ...` also work (the Python package uses the long lowercase name, as
-required by Python naming conventions).
+**No need to activate anything.** `./setup.sh` links `zsra` and its commands in `~/.local/bin` (your user only;
+Ubuntu, Debian and Fedora have it in `PATH`, otherwise `setup.sh` says which line to add to `~/.bashrc` or
+`~/.zshrc`). The links point into `.venv`, whose scripts start the Python of `.venv` by themselves. An existing file
+in `~/.local/bin` that is not one of these links is never replaced; `./setup.sh --no-link` skips this step, and then
+`source .venv/bin/activate` (or `.venv/bin/zsra ...`) works as before.
 
 **Common mistakes.** `activate` is a shell script: `source .venv/bin/activate`, not `python3 .venv/bin/activate`
 (that gives `SyntaxError: unmatched ')'`). Likewise `python3 .venv/bin/zsra` runs the *system* Python, which does not
@@ -357,7 +371,7 @@ directly.
 **Web interface (optional).** It needs Streamlit, which is not installed by default:
 
 ```bash
-.venv/bin/pip install -e '.[web]'   # adds the zsra-web command
+./setup.sh --web                    # or, in an existing installation: .venv/bin/pip install -e '.[web]'
 ```
 
 For Docker, after installing it add your user to the `docker` group and log in again:
@@ -459,7 +473,7 @@ Notes:
 
 - **everything in one command**: `zsra HOST -u USER [options]` (or `zsra --local`). This is the mode for scripts and
   automation;
-- **interactive console**: `zsra` alone. It opens the ZeroStressRiskAssess console with the mascot, the `zsra >`
+- **interactive console**: `zsra` alone. It opens the ZeroStressRiskAssess console with the ZSRA logo, the `zsra >`
   prompt, built-in help and TAB completion: convenient when working by hand on several machines.
 
 Console commands:
@@ -527,14 +541,20 @@ Where the configuration comes from, first match wins: `ZSRA_PORTAL_URL` + `ZSRA_
 by the portal's agent script (`zsra-upload.sh setup`, for weekly scans with systemd), so `sudo zsra --local --upload`
 works on those machines with no other step.
 
-### Web interface (`zsra-web`)
+### Web interface (`zsra web`)
 
-The same work as the console, from the browser. Install it once (section 3), then:
+The same work as the console, from the browser, with the look of the portal of the suite. Install it once
+(`./setup.sh --web`), then:
 
 ```bash
-.venv/bin/zsra-web                          # opens the browser at http://127.0.0.1:8501/?token=...
-.venv/bin/zsra-web --port 8600 --no-browser --out-dir ~/assessments
+zsra web                                    # opens the browser at http://127.0.0.1:8501/?token=...
+zsra web --port 8600 --no-browser --out-dir ~/assessments
 ```
+
+![The web interface: a report of the Docker lab](ZeroStressRiskAssess/docs/screenshot-web.png)
+
+*A report of the Docker lab (fake data). Light and dark theme follow the system; Streamlit's menu (⋮ › Settings)
+switches them.*
 
 | Section | What it does |
 |---|---|
@@ -558,26 +578,55 @@ How it is protected and how it behaves:
 
 Ctrl-C in the terminal of `zsra-web` stops the interface, **not** the runs in progress.
 
-### The mascot
+### Shorter commands
 
-At startup (console or direct command) `zsra` shows the mascot, read from the text file
-`zerostressriskassess/mascot.txt`. To change it:
+A full command line is long: save it once under a name, then use the name.
 
-- **for everyone**: replace the content of that file (any text: braille, classic ASCII art...);
-- **for yourself only**, without touching the repository: `export ZSRA_MASCOT=~/my-mascot.txt`.
+```bash
+zsra save laptop 192.168.1.14 -u danielb -i ~/.ssh/riskassess_laptop --clamav-quick
+zsra laptop                    # the whole line above
+zsra laptop --skip clamav      # options after the name are added to it
+zsra targets                   # the saved targets      zsra forget laptop   # remove one
+```
 
-The mascot appears only on an interactive terminal: logs, pipes and scripts receive only useful output. To hide it:
+- The **key passphrase** and the **sudo password** are asked only when they turn out to be needed (an encrypted
+  key, a sudo that wants a password), so `--ask-key-pass` and `--ask-sudo-pass` can be left out. This works on a
+  terminal; without one (cron, scripts) the error message says which option to add. Passwords are never saved.
+- Names are a letter followed by letters, digits, `-` or `_`, **never a dot**: an IP address or a full host name is
+  never taken for a name. Saved in `~/.config/zsra/targets.json` (mode 600: addresses, users and key paths, no
+  secrets); `--yes`, `--out-dir` and `--sudo-pass-env` are refused in a saved line.
+- In the console: `save`, `scan laptop` (TAB completes the names), `targets`, `forget`. In the web interface the
+  *Saved target* menu fills the form.
+- One command for everything: `zsra web`, `zsra portal`, `zsra compare`, `zsra finalize`, `zsra inventory`,
+  `zsra pdf` are the same as `zsra-web`, `zsra-portal`... (which still work).
+
+### The logo
+
+At startup (console or direct command) `zsra` shows *ZSRA* in red block letters, read from the text file
+`zerostressriskassess/logo.txt`:
+
+```
+███████╗███████╗██████╗  █████╗
+╚══███╔╝██╔════╝██╔══██╗██╔══██╗
+  ███╔╝ ███████╗██████╔╝███████║
+ ███╔╝  ╚════██║██╔══██╗██╔══██║
+███████╗███████║██║  ██║██║  ██║
+╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝
+```
+
+To change it, replace the content of that file (for everyone) or `export ZSRA_LOGO=~/my-logo.txt` (for yourself).
+It appears only on an interactive terminal: logs, pipes and scripts receive only useful output. To hide it:
 `--no-banner` or `export ZSRA_NO_BANNER=1`; to disable colours, the standard `NO_COLOR=1` convention. For safety,
 terminal control sequences are stripped from the file and at most 60 lines are shown.
 
 ### From outside (recommended)
 
 ```bash
-# user with key and passwordless sudo
+# user with a key: its passphrase and the sudo password are asked if needed
 zsra 192.168.1.50 -u admin -i ~/.ssh/id_ed25519
 
-# user with SSH password and sudo asking for a password
-zsra 192.168.1.50 -u admin --ask-pass --ask-sudo-pass
+# user with SSH password (asked) and sudo asking for a password
+zsra 192.168.1.50 -u admin --ask-pass
 
 # SSH on a different port, first contact (host key not yet in known_hosts)
 zsra server.lan -p 2200 -u admin -i ~/.ssh/id_ed25519 --accept-new-hostkey
@@ -782,7 +831,7 @@ Verified on the lab: 132 installed packages before and after, no manifest.
 | `--upload` | no | upload the report to the portal at the end (needs `zsra-portal login`; checked before starting) |
 | `--no-upload` | no | do not upload, even with `zsra-portal login --auto` |
 | `--yes` | no | do not ask for the authorisation confirmation |
-| `--no-banner` | no | do not show the mascot at startup (also `ZSRA_NO_BANNER=1`) |
+| `--no-banner` | no | do not show the logo at startup (also `ZSRA_NO_BANNER=1`) |
 
 Exit codes: `0` completed, `1` confirmation denied or `--recover` unsuccessful, `2` error (connection, permissions,
 host key, unsupported distribution), `4` assessment completed but the report was **not** uploaded to the portal,
@@ -793,7 +842,8 @@ host key, unsupported distribution), `4` assessment completed but the report was
 `--ask-key-pass`, `--accept-new-hostkey`. `zsra-compare BEFORE AFTER [-o FILE.md]`.
 `zsra-inventory FILE [--yes] [--out-dir DIR] [-- OPTIONS]` (exit `2` if a machine was not assessed).
 `zsra-pdf REPORT_DIR` writes `report.pdf` for an existing report. All of them exit with `2` on error.
-`zsra-web [--port 8501] [--out-dir ./reports] [--no-browser]` starts the web interface (section 5).
+`zsra web` (= `zsra-web`) `[--port 8501] [--out-dir ./reports] [--no-browser]` starts the web interface (section 5).
+`zsra save NAME HOST [options]`, `zsra NAME [options]`, `zsra targets`, `zsra forget NAME`: saved targets (section 5).
 `zsra-portal login URL [--ca-file CA] [--auto] [--token-stdin] | check | status | upload DIR... [--latest] | logout`:
 the portal of the suite (section 5); exit `1` if the portal refused the token or a report, `2` on error.
 
@@ -980,7 +1030,9 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 
 | Message / symptom | Cause and solution |
 |---|---|
-| `zsh: command not found: zsra` | the virtual environment is not active: `source .venv/bin/activate` (or use `.venv/bin/zsra`) |
+| `zsh: command not found: zsra` | `./setup.sh` again (it links the commands in `~/.local/bin`) and check that `~/.local/bin` is in `PATH`; or `source .venv/bin/activate` |
+| `sudo asks for a password, so add --ask-sudo-pass` | zsra was run without a terminal (cron, a script, a pipe): only there the password cannot be asked by itself |
+| `zsra NAME`: `invalid host` | `NAME` is not saved: `zsra targets` lists the saved ones |
 | `SyntaxError: unmatched ')'` on `.venv/bin/activate` | it is a shell script: `source .venv/bin/activate`, not `python3 .venv/bin/activate` |
 | `ModuleNotFoundError: No module named 'zerostressriskassess'` | `python3 .venv/bin/zsra` uses the system Python: run `.venv/bin/zsra` (or activate `.venv` first) |
 | console: `Unknown command: zsra` | inside the console commands have no `zsra` in front: `scan HOST -u USER ...` |
@@ -1030,7 +1082,8 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
     │   ├── console.py            interactive console (`zsra` without arguments)
     │   ├── web/                  web interface (`zsra-web`): app.py pages, jobs.py/runner.py detached runs
     │   ├── portal.py             upload to the ZeroStressRiskAssessWeb portal (`zsra-portal`, `--upload`)
-    │   ├── banner.py, mascot.txt   startup mascot (the .txt file can be replaced)
+    │   ├── banner.py, logo.txt   startup logo, ZSRA in block letters (the .txt file can be replaced)
+    │   ├── targets.py            saved targets (`zsra save NAME ...`, `zsra NAME`)
     │   ├── orchestrator.py       order of the checks, guaranteed cleanup, reconnaissance-only mode
     │   ├── osinfo.py             distribution recognition (os-release, families, tested releases)
     │   ├── pkgmgr.py             apt and dnf/yum
@@ -1095,7 +1148,8 @@ Planned, not yet available. Each item from a real run carries the case that show
 Done in version 1.x, for the record: RHEL family support, `--recon-only`, two-phase report (encryption and
 signature), comparison of two runs, resources and disks checks, rkhunter warnings verified before rating,
 `--no-install`, inventory of several machines, PDF report; in 1.4.0 the web interface, a `--recover` that removes only
-zsra's own packages, and tests with CI in the repository; in 1.5.0 the upload to the portal of the suite. Rocky 9 and a real laptop (NVMe SMART) were run end to
+zsra's own packages, and tests with CI in the repository; in 1.5.0 the upload to the portal of the suite; in 1.6.0 saved targets, passwords asked when needed, one `zsra`
+command for everything, the web interface in the portal's style and the ZSRA logo. Rocky 9 and a real laptop (NVMe SMART) were run end to
 end on 2026-10-22; a failing disk has still never been seen, so the SMART warnings are tested on output written in
 smartctl's format.
 

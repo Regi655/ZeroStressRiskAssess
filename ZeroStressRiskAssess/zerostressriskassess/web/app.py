@@ -20,16 +20,15 @@ from pathlib import Path
 
 import streamlit as st
 
-from zerostressriskassess import __version__, portal
+from zerostressriskassess import __version__, portal, targets
 from zerostressriskassess.compare import compare, to_markdown
 from zerostressriskassess.console import list_reports, tools_status
 from zerostressriskassess.risk import level as risk_level
 from zerostressriskassess.scanners import ALL_NAMES
 from zerostressriskassess.validate import valid_host
-from zerostressriskassess.web import jobs
+from zerostressriskassess.web import jobs, theme
 
 PAGES = ["New assessment", "Runs", "Reports", "Compare", "Tools"]
-LEVEL_COLOUR = {"CRITICAL": "#c0392b", "HIGH": "#e67e22", "MEDIUM": "#f1c40f", "LOW": "#27ae60"}
 MODES = {"Assessment over SSH": "scan", "External reconnaissance (no login)": "recon",
          "Recovery after an interrupted run": "recover"}
 
@@ -66,7 +65,15 @@ def _goto(page, **state):
 
 
 def _badge(lv: str) -> str:
-    return f":{ {'CRITICAL': 'red', 'HIGH': 'orange', 'MEDIUM': 'yellow', 'LOW': 'green'}.get(lv, 'gray') }[**{lv}**]"
+    """The portal's level badge: Streamlit's red/orange/yellow/green, set to the portal colours (theme.py)."""
+    return f":{ {'CRITICAL': 'red', 'HIGH': 'orange', 'MEDIUM': 'yellow', 'LOW': 'green'}.get(lv, 'gray') }-badge[{lv}]"
+
+
+def _kind():
+    try:
+        return st.context.theme.type
+    except AttributeError:
+        return None
 
 
 def _report_label(row):
@@ -81,6 +88,8 @@ def page_new():
     label = st.radio("Type", list(MODES), horizontal=True, key="mode_label")
     mode = MODES[label]
     last = st.session_state.setdefault("last_form", {})
+    if mode != "recover":
+        _saved_target_picker(last)
     if mode == "recon":
         st.caption("Network probes from this machine only (nmap, ssh-audit, DNS, MySQL): no login, nothing installed, "
                    "run or written on the target.")
@@ -106,7 +115,8 @@ def page_new():
             secrets["key"] = c1.text_input("Key passphrase", type="password")
             secrets["sudo"] = c2.text_input("sudo password", type="password")
             secrets["ssh"] = c3.text_input("SSH password (if no key)", type="password")
-            hostkey = st.checkbox("Accept the host key if the target is not in known_hosts (first contact only!)")
+            hostkey = st.checkbox("Accept the host key if the target is not in known_hosts (first contact only!)",
+                                  value=last.get("accept_new_hostkey", False))
 
         opts = {"accept_new_hostkey": hostkey}
         if mode != "recover":
@@ -115,15 +125,19 @@ def page_new():
                 opts["nmap_ports"] = c1.text_input("nmap ports", value=last.get("nmap_ports", ""),
                                                    help="'1-1024,8080'; '-' = all; empty = top 1000")
                 opts["nse"] = c2.selectbox("NSE scripts", ["default", "off", "tls"],
+                                           index=["default", "off", "tls"].index(last.get("nse", "default")),
                                            format_func={"default": "default", "off": "off (ports and versions only)",
                                                         "tls": "default + TLS ciphers"}.get)
                 if mode == "scan":
                     c1, c2, c3 = st.columns(3)
                     opts["clamav"] = c1.selectbox("ClamAV", ["default", "quick", "full"],
+                                                  index=["default", "quick", "full"].index(last.get("clamav", "default")),
                                                   format_func={"default": "default", "quick": "quick (typical malware "
                                                                "locations)", "full": "whole disk (slow)"}.get)
-                    opts["no_install"] = c2.checkbox("Install nothing on the target (--no-install)")
-                    opts["keep_tools"] = c3.checkbox("Keep the installed tools (--keep-tools)")
+                    opts["no_install"] = c2.checkbox("Install nothing on the target (--no-install)",
+                                                     value=last.get("no_install", False))
+                    opts["keep_tools"] = c3.checkbox("Keep the installed tools (--keep-tools)",
+                                                     value=last.get("keep_tools", False))
                 opts["skip"] = st.multiselect("Checks to skip", ALL_NAMES, default=last.get("skip", []))
                 c1, c2 = st.columns(2)
                 opts["dns_zones"] = c1.text_input("DNS zones to test for AXFR (space separated)",
@@ -166,6 +180,36 @@ def page_new():
     job = jobs.start(OUT_DIR, argv, secrets, kind="recover-preview" if mode == "recover" else mode,
                      confirm=mode != "recover")
     _goto("Runs", selected_job=job.id)
+
+
+def _saved_target_picker(last):
+    """Saved targets (zsra save NAME ...): picking one fills the form, as `zsra NAME` does in a terminal."""
+    try:
+        saved = targets.load()
+    except targets.TargetError as exc:
+        st.warning(str(exc))
+        return
+    if not saved:
+        st.caption("Tip: save a target once in a terminal (`zsra save NAME HOST -u USER ...`) and pick it here.")
+        return
+    from zerostressriskassess.cli import build_parser
+    names = ["—"] + sorted(saved)
+    name = st.selectbox("Saved target", names, key="saved_target",
+                        format_func=lambda n: n if n == "—" else f"{n}  ·  zsra {' '.join(saved[n])}")
+    if name == "—" or st.session_state.get("filled_from") == name:
+        return
+    try:
+        a = build_parser().parse_args(saved[name])
+    except SystemExit:
+        st.error(f"Saved target {name}: not a valid zsra command line any more")
+        return
+    last.update(host=a.host or "", port=a.port, user=a.user or "", key=a.key or "", nmap_ports=a.nmap_ports,
+                skip=list(a.skip), dns_zones=" ".join(a.dns_zone), scan_timeout=a.scan_timeout,
+                accept_new_hostkey=a.accept_new_hostkey, no_install=a.no_install, keep_tools=a.keep_tools,
+                clamav="quick" if a.clamav_quick else "full" if a.clamav_full else "default",
+                nse="off" if a.no_nse else "tls" if a.nse_tls else "default")
+    st.session_state.filled_from = name
+    st.rerun()
 
 
 # ---------------------------------------------------------------------- runs
@@ -256,10 +300,7 @@ def page_reports():
                f"{int(meta.get('duration_s', 0)) // 60} min · zsra {meta.get('version', '?')}")
     if meta.get("stage"):
         st.warning(meta["stage"])
-    cols = st.columns(5)
-    cols[0].markdown(f"Overall risk  \n{_badge(summ.get('level', '?'))}")
-    for c, lv in zip(cols[1:], ["CRITICAL", "HIGH", "MEDIUM", "LOW"]):
-        c.metric(lv.capitalize(), summ.get("counts", {}).get(lv, 0))
+    _summary(summ)
 
     t_risks, t_matrix, t_findings, t_html, t_tools, t_files = st.tabs(
         ["Risks", "Matrix", "Findings", "Full report", "Tools on the target", "Files"])
@@ -337,21 +378,32 @@ def _risks(rep):
                 st.text(f.get("detail") or "(no detail)")
 
 
+def _summary(summ):
+    """The portal's summary: the overall level in a big box, then one box per level. Only fixed level names and
+    integers go into the HTML: no text from the report."""
+    level = summ.get("level", "?")
+    k = theme.LEVEL_KEYS.get(level, "low")
+    counts = summ.get("counts", {})
+    boxes = "".join(f'<div class="zsra-count lv-{theme.LEVEL_KEYS[lv]}"><b>{int(counts.get(lv, 0))}</b>'
+                    f'{lv.capitalize()}</div>' for lv in theme.LEVEL_KEYS)
+    name = level if level in theme.LEVEL_KEYS else "?"
+    st.html(f'<div class="zsra-summary"><div class="zsra-overall lv-{k}">Overall risk<b>{name}</b></div>{boxes}</div>')
+
+
 def _matrix(matrix):
+    kind = _kind()
     cells = []
     for imp in range(5, 0, -1):
         tds = [f"<th>{imp}</th>"]
         for lik in range(1, 6):
-            n = matrix.get(f"{imp}x{lik}", 0)
-            colour = LEVEL_COLOUR[risk_level(imp * lik)]
-            style = f"background:{colour};opacity:{1 if n else 0.25};color:#000;font-weight:{700 if n else 400}"
-            tds.append(f'<td style="{style}">{n or ""}</td>')
+            n = int(matrix.get(f"{imp}x{lik}", 0) or 0)
+            colour = theme.level_colour(kind, risk_level(imp * lik))
+            tds.append(f'<td class="{"" if n else "empty"}" style="background:{colour}">{n or ""}</td>')
         cells.append("<tr>" + "".join(tds) + "</tr>")
     head = "<tr><th></th>" + "".join(f"<th>{i}</th>" for i in range(1, 6)) + "</tr>"
-    st.markdown(
-        "<style>.zm td,.zm th{width:3.2em;height:2.6em;text-align:center;border:1px solid #8884}</style>"
-        f'<table class="zm"><caption>Impact (rows) × likelihood (columns): number of problems</caption>'
-        f"{''.join(cells)}{head}</table>", unsafe_allow_html=True)   # only integers and fixed colours: no report text
+    # only integers and the palette's colours: no report text in this HTML
+    st.markdown(f'<table class="zsra-matrix">{"".join(cells)}{head}</table>', unsafe_allow_html=True)
+    st.caption("Impact (rows) × likelihood (columns): number of problems.")
     st.caption("Levels: CRITICAL 15-25, HIGH 10-14, MEDIUM 5-9, LOW 1-4.")
 
 
@@ -455,20 +507,26 @@ def _portal_settings():
 
 # ---------------------------------------------------------------------- main
 def main():
-    st.set_page_config(page_title="ZeroStressRiskAssess", page_icon="🛡️", layout="wide")
+    st.set_page_config(page_title="ZeroStressRiskAssess", page_icon="🟧", layout="wide",
+                       initial_sidebar_state="collapsed")
+    st.html(theme.css(_kind()))
     _check_access()
-    if "goto" in st.session_state:   # set before the sidebar radio exists: the only moment it may change
+    if "goto" in st.session_state:   # set before the navigation exists: the only moment it may change
         st.session_state.page = st.session_state.pop("goto")
-    with st.sidebar:
-        st.title("ZeroStressRiskAssess")
-        st.caption(f"version {__version__}")
-        page = st.radio("Section", PAGES, key="page", label_visibility="collapsed")
-        running = sum(j.running for j in jobs.list_jobs(OUT_DIR))
-        if running:
-            st.info(f"{running} run(s) in progress")
-        st.caption("Never type passwords anywhere but the password fields: they go to the run's memory only.")
+    st.session_state.setdefault("page", PAGES[0])
+    # The portal's header: the brand on the left, the sections on the right, a thin line under it.
+    left, right = st.columns([2, 5], vertical_alignment="center")
+    left.html(f'<div class="zsra-brand">ZeroStress<span>RiskAssess</span><small>{__version__}</small></div>')
+    page = right.segmented_control("Section", PAGES, key="page", required=True, label_visibility="collapsed")
+    st.html('<hr class="zsra-line">')
+    running = sum(j.running for j in jobs.list_jobs(OUT_DIR))
+    if running and page != "Runs":
+        st.info(f"{running} run(s) in progress: see **Runs**.")
     {"New assessment": page_new, "Runs": page_runs, "Reports": page_reports, "Compare": page_compare,
-     "Tools": page_tools}[page]()
+     "Tools": page_tools}[page or PAGES[0]]()
+    st.html('<div class="zsra-foot">ZeroStressRiskAssess — the results are automatically collected indicators, '
+            "not verdicts. Passwords go only into the password fields: they reach the run's memory, nothing else."
+            "</div>")
 
 
 if __name__ == "__main__":   # `streamlit run` executes the file as __main__; a plain import (tests) draws nothing

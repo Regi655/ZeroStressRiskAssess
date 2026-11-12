@@ -1,6 +1,6 @@
 """`zsra-web`: the web interface (Streamlit), on this machine only.
 
-    zsra-web                       # http://127.0.0.1:8501, opens the browser
+    zsra web                       # http://127.0.0.1:8501, opens the browser (also: zsra-web)
     zsra-web --port 8600 --no-browser --out-dir ~/assessments
 
 The server listens on 127.0.0.1 ONLY and asks for a random token generated at every start (printed in the
@@ -25,12 +25,14 @@ from pathlib import Path
 
 
 def build_command(port: int, out_dir: str):
+    from . import theme
     app = Path(__file__).with_name("app.py")
     return [sys.executable, "-m", "streamlit", "run", str(app),
             "--server.address=127.0.0.1", f"--server.port={port}", "--server.headless=true",
             "--browser.gatherUsageStats=false",      # no telemetry: report data and targets stay here
             "--server.fileWatcherType=none", "--server.runOnSave=false",
             "--server.enableXsrfProtection=true", "--client.toolbarMode=minimal",
+            *theme.streamlit_flags(),                # the look of the portal (web/theme.py)
             "--", "--out-dir", str(Path(out_dir).expanduser().resolve())]
 
 

@@ -114,6 +114,11 @@ def _require_root(rem) -> None:
     if re.search(r"try again|incorrect password", r.out, re.I):
         raise PermissionError("sudo REJECTED the password given with --ask-sudo-pass / --sudo-pass-env "
                               f"(user {getattr(rem, 'user', '?')}): check it and retry.")
+    if re.search(r"password is required|a terminal is required", r.out, re.I) and getattr(rem, "ask_sudo", None):
+        # On a terminal, without --ask-sudo-pass: ask now, once, and check it.
+        rem.sudo_password = rem.ask_sudo()
+        rem.ask_sudo = None
+        return _require_root(rem)
     if re.search(r"password is required|a terminal is required", r.out, re.I):
         raise PermissionError("sudo asks for a password, so add --ask-sudo-pass (or --sudo-pass-env).")
     raise PermissionError("Root privileges are required: a sudo user (with --ask-sudo-pass if sudo asks for a "

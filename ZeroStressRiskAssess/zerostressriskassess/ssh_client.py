@@ -48,6 +48,7 @@ class Remote:
         # Called every HEARTBEAT seconds during long commands (set by the orchestrator).
         # Without it the tool appears frozen for minutes during apt or ClamAV.
         self.progress = None
+        self.ask_sudo = None   # set by cli.py on a terminal: asks the sudo password the first time sudo wants one
 
     # ------------------------------------------------------------------ connection
     def connect(self):
@@ -209,6 +210,7 @@ class Local:
         self.sudo_password = sudo_password
         self.auth_method = "local (no SSH connection)"
         self.progress = None
+        self.ask_sudo = None   # set by cli.py on a terminal: asks the sudo password the first time sudo wants one
 
     def connect(self):
         pass

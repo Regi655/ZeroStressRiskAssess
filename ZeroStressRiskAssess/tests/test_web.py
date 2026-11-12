@@ -109,7 +109,8 @@ class AppPagesTest(unittest.TestCase):
         if src:
             shutil.copytree(src.parent, self.tmp / "reports" / src.parent.name)
         env = mock.patch.dict(os.environ, {"ZSRA_WEB_TOKEN": "tok", "ZSRA_WEB_OUT_DIR": str(self.tmp / "reports"),
-                                           "ZSRA_PORTAL_CONFIG": str(self.tmp / "portal.json")})   # not the real one
+                                           "ZSRA_PORTAL_CONFIG": str(self.tmp / "portal.json"),   # not the real ones
+                                           "ZSRA_TARGETS": str(self.tmp / "targets.json")})
         env.start()
         self.addCleanup(env.stop)
 
@@ -122,14 +123,29 @@ class AppPagesTest(unittest.TestCase):
     def test_without_token_access_is_denied(self):
         at = self._app(token="wrong")
         self.assertTrue(at.error)
-        self.assertEqual(len(at.sidebar.radio), 0)
+        self.assertEqual(len(at.segmented_control), 0)
 
     def test_every_page_renders(self):
         at = self._app()
         self.assertFalse(at.exception)
         for page in ["New assessment", "Runs", "Reports", "Compare", "Tools"]:
-            at.sidebar.radio[0].set_value(page).run()
+            at.segmented_control(key="page").set_value(page).run()
             self.assertFalse(at.exception, f"{page}: {at.exception}")
+
+    def test_saved_target_fills_the_form(self):
+        from zerostressriskassess import targets
+        targets.save("laptop", ["192.168.1.14", "-u", "danielb", "-p", "2222", "--clamav-quick"])
+        at = self._app()
+        at.selectbox(key="saved_target").set_value("laptop").run()
+        self.assertFalse(at.exception)
+        self.assertEqual(at.text_input[0].value, "192.168.1.14")
+        self.assertEqual(at.number_input[0].value, 2222)
+        self.assertIn("danielb", [t.value for t in at.text_input])
+
+    def test_theme_of_the_portal(self):
+        cmd = " ".join(build_command(8501, "/tmp/x"))
+        self.assertIn("--theme.light.primaryColor=#c2410c", cmd)   # the portal's orange (app.css --accent)
+        self.assertIn("--theme.dark.backgroundColor=#000000", cmd)
 
     def test_invalid_target_is_refused_without_starting(self):
         at = self._app()

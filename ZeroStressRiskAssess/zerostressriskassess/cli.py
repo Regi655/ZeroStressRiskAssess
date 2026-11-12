@@ -9,10 +9,12 @@ from __future__ import annotations
 import argparse
 import getpass
 import os
+import re
+import shlex
 import sys
 from pathlib import Path
 
-from . import __version__, banner, portal
+from . import __version__, banner, portal, targets
 from .models import Options
 from .orchestrator import assess, recon, recover
 from .scanners import ALL_NAMES
@@ -23,8 +25,15 @@ DEFAULT_LYNIS = str(Path(__file__).resolve().parent.parent / "vendor" / "lynis")
 
 
 def build_parser():
-    ap = argparse.ArgumentParser(prog="zsra",
-                                 epilog="Without arguments, zsra opens its interactive console.",
+    ap = argparse.ArgumentParser(prog="zsra", formatter_class=argparse.RawDescriptionHelpFormatter,
+                                 epilog="""shorter:
+  zsra save NAME HOST -u USER [options]   save a whole command line once
+  zsra NAME [more options]                then run it by name   (zsra targets: list, zsra forget NAME)
+  passphrase and sudo password are asked when needed: --ask-key-pass / --ask-sudo-pass are optional
+
+other commands:
+  zsra web | portal | compare | finalize | inventory | pdf   (each with --help)
+  zsra                                    interactive console""",
                                  description="Risk assessment of a Linux machine (Ubuntu/Debian, RHEL family): "
                                              "risk = impact × likelihood")
     ap.add_argument("host", nargs="?", help="target IP or hostname (omitted with --local)")
@@ -81,6 +90,15 @@ def main(argv=None, result=None, secrets=None) -> int:
         # `zsra` alone opens the interactive console (console.py); with arguments everything runs in one command.
         from .console import run
         return run()
+    if argv[0] in SUBCOMMANDS:          # zsra web / portal / compare ...: one command to remember
+        return _subcommand(argv[0], list(argv[1:]))
+    try:
+        argv, saved = targets.expand(list(argv))
+    except targets.TargetError as exc:
+        print(f"zsra: {exc}", file=sys.stderr)
+        return 2
+    if saved:
+        print(f"[i] Saved target {saved}: zsra {shlex.join(argv)}")
     ap = build_parser()
     args = ap.parse_args(argv)
     if not args.no_banner:
@@ -136,6 +154,9 @@ def main(argv=None, result=None, secrets=None) -> int:
         return _recon(args, result)
 
     spwd = secrets.get("sudo") or (getpass.getpass("sudo password: ") if args.ask_sudo_pass else None)
+    # Without --ask-*: on a terminal the passwords are asked only when they turn out to be needed (an encrypted key,
+    # a sudo that wants a password). Not without a terminal (web runs, cron): there an error says what to add.
+    interactive = sys.stdin.isatty() and not secrets
     if args.sudo_pass_env:
         # Environment variable rather than argument: arguments are visible to every user through `ps`, a
         # process environment only to its owner and root. It should still be set for the single command only.
@@ -146,8 +167,12 @@ def main(argv=None, result=None, secrets=None) -> int:
         rem = Local(sudo_password=spwd)
     else:
         kpwd = secrets.get("key") or (getpass.getpass("Key passphrase: ") if args.ask_key_pass else None)
+        if kpwd is None and args.key and interactive and key_is_encrypted(args.key):
+            kpwd = getpass.getpass(f"Passphrase of {args.key}: ")
         pwd = secrets.get("ssh") or (getpass.getpass("SSH user password: ") if args.ask_pass else None)
         rem = Remote(args.host, args.user, args.port, args.key, pwd, spwd, args.accept_new_hostkey, passphrase=kpwd)
+    if spwd is None and interactive:
+        rem.ask_sudo = lambda: getpass.getpass(f"sudo password for {args.user or rem.user}: ")
 
     def confirm(msg):
         return args.yes or input(f"{msg} [yes/no] ").strip().lower() in ("yes", "y")
@@ -212,6 +237,76 @@ def _recon(args, result=None) -> int:
         result["report"] = rep
     print_summary(rep)
     return _upload(args, rep)
+
+
+SUBCOMMANDS = {"web": "web", "portal": "portal", "compare": "compare", "finalize": "finalize",
+               "inventory": "inventory", "pdf": "pdfreport", "save": None, "targets": None, "forget": None}
+
+
+def _subcommand(name, rest) -> int:
+    if name in ("save", "targets", "forget"):
+        return _targets_cmd(name, rest)
+    import importlib
+    return importlib.import_module(f".{SUBCOMMANDS[name]}", __package__).main(rest)
+
+
+def _targets_cmd(name, rest) -> int:
+    try:
+        if name == "save":
+            if len(rest) < 2 or rest[0].startswith("-"):
+                print("usage: zsra save NAME HOST -u USER [options]   (then: zsra NAME)", file=sys.stderr)
+                return 2
+            build_parser().parse_args(rest[1:])          # the line must be a valid zsra command line
+            targets.save(rest[0], rest[1:])
+            print(f"Saved. From now on:  zsra {rest[0]}   (or  scan {rest[0]}  in the console;  "
+                  f"extra options can follow the name)")
+        elif name == "forget":
+            if len(rest) != 1:
+                print("usage: zsra forget NAME", file=sys.stderr)
+                return 2
+            print(f"Forgotten: {rest[0]}" if targets.forget(rest[0]) else f"No saved target {rest[0]}")
+        else:
+            saved = targets.load()
+            if not saved:
+                print("No saved targets. Save one:  zsra save NAME HOST -u USER [options]")
+            for n, line in sorted(saved.items()):
+                print(f"  {n:16} zsra {shlex.join(line)}")
+        return 0
+    except targets.TargetError as exc:
+        print(f"zsra: {exc}", file=sys.stderr)
+        return 2
+
+
+def key_is_encrypted(path) -> bool:
+    """True if the private key needs a passphrase. Read from the file itself, because libraries disagree on how they
+    report it (paramiko 5 raises a plain TypeError). Unknown or unreadable: False (the connection says what is wrong).
+      - PEM (-----BEGIN RSA/EC/DSA PRIVATE KEY-----): a "Proc-Type: 4,ENCRYPTED" header;
+      - PKCS#8: -----BEGIN ENCRYPTED PRIVATE KEY-----;
+      - OpenSSH (-----BEGIN OPENSSH PRIVATE KEY-----, the ssh-keygen default): "openssh-key-v1", then the cipher name,
+        "none" when there is no passphrase."""
+    import base64
+    import struct
+    try:
+        text = Path(os.path.expanduser(path)).read_text(encoding="ascii", errors="replace")
+    except OSError:
+        return False
+    if "-----BEGIN ENCRYPTED PRIVATE KEY-----" in text or "Proc-Type: 4,ENCRYPTED" in text:
+        return True
+    # Built from two pieces: written whole, the BEGIN...END pattern would itself look like a key to redact.py.
+    begin, end = "-----BEGIN OPENSSH PRIVATE KEY-----", "-----END OPENSSH PRIVATE KEY-----"
+    m = re.search(re.escape(begin) + "(.*?)" + re.escape(end), text, re.S)
+    if not m:
+        return False
+    try:
+        blob = base64.b64decode("".join(m.group(1).split()))
+        magic = b"openssh-key-v1\0"
+        if not blob.startswith(magic):
+            return False
+        (n,) = struct.unpack(">I", blob[len(magic):len(magic) + 4])
+        cipher = blob[len(magic) + 4:len(magic) + 4 + n]
+    except (ValueError, struct.error):
+        return False
+    return cipher != b"none"
 
 
 def _upload(args, rep) -> int:
