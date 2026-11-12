@@ -1,4 +1,4 @@
-"""Mascot banner (from a file) and the interactive `zsra` console."""
+"""ZSRA logo banner (from a file) and the interactive `zsra` console."""
 import io
 import json
 import os
@@ -20,17 +20,23 @@ class Tty(io.StringIO):
 
 
 class BannerTest(unittest.TestCase):
-    def test_mascot_from_the_package_file(self):
+    def test_logo_from_the_package_file(self):
         self.assertTrue(banner.DEFAULT_ART.is_file())
         art = banner.load_art()
-        self.assertGreater(len(art.splitlines()), 10)
-        self.assertIn("⣿", art)                       # it is the braille image
+        self.assertEqual(len(art.splitlines()), 6)    # ZSRA in block letters with a box-drawing shadow
+        self.assertIn("█", art)
+        self.assertIn("╚", art)
 
-    def test_mascot_replaceable_with_variable(self):
+    def test_logo_in_red_on_a_terminal_plain_elsewhere(self):
+        self.assertIn("\x1b[" + banner.LOGO_COLOUR + "m", banner.render(Tty()))
+        with mock.patch.dict(os.environ, {"NO_COLOR": "1"}):
+            self.assertNotIn("\x1b[", banner.render(Tty()))
+
+    def test_logo_replaceable_with_variable(self):
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as f:
             f.write("  /\\_/\\\n ( o.o )\n\x1b[31m > ^ <\n\n\n")   # with a control sequence and empty lines
         try:
-            with mock.patch.dict(os.environ, {"ZSRA_MASCOT": f.name}):
+            with mock.patch.dict(os.environ, {"ZSRA_LOGO": f.name}):
                 art = banner.load_art()
             self.assertEqual(art, "  /\\_/\\\n ( o.o )\n[31m > ^ <")   # ESC removed, trailing empty lines removed
             self.assertNotIn("\x1b", art)
@@ -38,7 +44,7 @@ class BannerTest(unittest.TestCase):
             os.unlink(f.name)
 
     def test_missing_file_title_only(self):
-        with mock.patch.dict(os.environ, {"ZSRA_MASCOT": "/does/not/exist.txt", "NO_COLOR": "1"}):
+        with mock.patch.dict(os.environ, {"ZSRA_LOGO": "/does/not/exist.txt", "NO_COLOR": "1"}):
             out = banner.render(Tty())
         self.assertTrue(out.startswith("  ZeroStressRiskAssess"))
 

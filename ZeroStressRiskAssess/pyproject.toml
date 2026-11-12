@@ -29,8 +29,8 @@ zsra-portal = "zerostressriskassess.portal:main"
 packages = ["zerostressriskassess", "zerostressriskassess.scanners", "zerostressriskassess.web"]
 
 [tool.setuptools.package-data]
-# startup banner artwork (see banner.py): plain text file, replaceable
-zerostressriskassess = ["mascot.txt"]
+# startup logo (see banner.py): plain text file, replaceable
+zerostressriskassess = ["logo.txt"]
 
 [tool.setuptools.dynamic]
 version = {attr = "zerostressriskassess.__version__"}

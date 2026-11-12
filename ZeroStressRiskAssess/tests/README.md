@@ -21,8 +21,9 @@ real target wrong, the output that caused the error is added together with a tes
 | test_nse_sshaudit_ftp.py | nmap NSE scripts, ssh-audit, FTP |
 | test_vm_cases.py, test_laptop.py, test_docker_lab.py, test_rocky_lab.py, test_rocky_0110.py | cases found on VMs, a laptop and Docker labs (false positives fixed), including chkrootkit and rkhunter output |
 | test_permissions_integrity_report.py, test_sudoers.py, test_cleanup.py | permissions, integrity, sudo, progress of long commands, tool texts never masked by mistake |
-| test_console.py | mascot banner and the interactive `zsra` console |
+| test_console.py | the ZSRA logo banner and the interactive `zsra` console |
 | test_web.py | web interface: command line built from the form, detached runs, secrets kept off argv and logs, access token, every page (Streamlit `AppTest`, skipped without Streamlit) |
+| test_shortcuts.py | saved targets (`zsra save` / `zsra NAME`, names never taken for hosts, refused options, mode 600), `zsra SUBCOMMAND`, encrypted keys recognised (PEM and OpenSSH), sudo password asked once when sudo wants it |
 | test_portal.py | upload to the ZeroStressRiskAssessWeb portal: a stub of its API (token, check, added/duplicate, hash), HTTPS-only rule, no redirects, TLS with a private authority (`--ca-file`), configuration file mode 600, `zsra --upload` / `--no-upload` / exit code 4 |
 | test_recover.py | `--recover` removes only the tools zsra installed and their dependencies, not packages that appeared meanwhile |
 | test_lint.py, test_smoke.py | pyflakes, import of every module, every check survives unexpected output |

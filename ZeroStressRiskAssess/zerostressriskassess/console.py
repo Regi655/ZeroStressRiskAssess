@@ -43,8 +43,9 @@ class Console(cmd.Cmd):
     def _run(self, argv, main=None) -> int:
         """Run cli.main (or another command's main) as the direct command would, without terminating the console."""
         if main is None:
-            from .cli import main as cli_main
-            main, argv = cli_main, argv + ["--no-banner"]   # the console already showed the banner at startup
+            from .cli import SUBCOMMANDS, main as cli_main
+            # the console already showed the banner at startup (not for save/targets/forget: no banner there)
+            main, argv = cli_main, argv + ([] if argv and argv[0] in SUBCOMMANDS else ["--no-banner"])
         try:
             return main(argv)
         except SystemExit as exc:      # argparse: --help or invalid options
@@ -103,6 +104,18 @@ class Console(cmd.Cmd):
             return
         argv = self._fix_host_flag(argv)
         self._run(argv + ([] if self._has_out_dir(argv) else ["--out-dir", self.out_dir]))
+
+    def complete_scan(self, text, line, begidx, endidx):
+        """TAB after 'scan' / 'forget': the saved targets."""
+        from . import targets
+        if len(line[:begidx].split()) != 1:
+            return []
+        try:
+            return [n for n in sorted(targets.load()) if n.startswith(text)]
+        except targets.TargetError:
+            return []
+
+    complete_forget = complete_scan
 
     def do_recon(self, line):
         """recon HOST [options]
@@ -245,6 +258,28 @@ class Console(cmd.Cmd):
             self.stdout.write("Invalid number: see 'reports'.\n")
             return
         upload_report(path, log=lambda m: self.stdout.write(m + "\n"))
+
+    def do_save(self, line):
+        """save NAME HOST -u USER [options]
+    Save a whole command line under a short name, then 'scan NAME' (or 'zsra NAME' in a terminal). Example:
+      save laptop 192.168.1.14 -u danielb -i ~/.ssh/riskassess_laptop --clamav-quick
+      scan laptop
+    Passwords are never saved: they are asked when needed."""
+        argv = self._split(line)
+        if argv is not None:
+            self._run(["save"] + argv)
+
+    def do_targets(self, line):
+        """targets
+    The saved targets ('save' adds one, 'forget NAME' removes it)."""
+        self._run(["targets"])
+
+    def do_forget(self, line):
+        """forget NAME
+    Remove a saved target."""
+        argv = self._split(line)
+        if argv is not None:
+            self._run(["forget"] + argv)
 
     def do_tools(self, line):
         """tools

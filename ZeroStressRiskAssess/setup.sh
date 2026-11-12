@@ -2,10 +2,14 @@
 #
 # setup.sh - prepares the controller (the machine that runs the assessments) for ZeroStressRiskAssess.
 #
-#   ./setup.sh            Python environment (.venv), dependencies, Lynis in vendor/lynis, external tool check
+#   ./setup.sh            Python environment (.venv), dependencies, Lynis in vendor/lynis, the zsra commands linked in
+#                         ~/.local/bin (no `source .venv/bin/activate` needed), external tool check
+#   ./setup.sh --web      the same, plus the web interface (Streamlit: zsra web)
+#   ./setup.sh --no-link  do not link the commands in ~/.local/bin
 #   ./setup.sh --check    external tool check only
 #
 # Nothing is installed system-wide: for nmap, ssh-audit, Grype, Trivy and Docker the required command is printed.
+# The links in ~/.local/bin belong to your user only and point into .venv: remove them with rm if not wanted.
 
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")"
@@ -60,7 +64,40 @@ check_tools() {
     || miss "Lynis           -> git clone --depth 1 https://github.com/CISOfy/lynis vendor/lynis"
 }
 
-if [ "${1:-}" != "--check" ]; then
+CHECK_ONLY=0 WEB=0 LINK=1
+for arg in "$@"; do
+  case "$arg" in
+    --check) CHECK_ONLY=1 ;;
+    --web) WEB=1 ;;
+    --no-link) LINK=0 ;;
+    *) echo "setup.sh: unknown option $arg (--check, --web, --no-link)" >&2; exit 2 ;;
+  esac
+done
+
+# zsra and its commands as symbolic links in ~/.local/bin, which Ubuntu, Debian and Fedora put in PATH: the scripts
+# in .venv/bin start the Python of .venv by themselves, so nothing has to be activated. An existing file that is
+# not one of our links is never replaced.
+link_commands() {
+  local bin="$HOME/.local/bin" n=0 cmd dst
+  mkdir -p "$bin"
+  for cmd in zsra zsra-web zsra-portal zsra-compare zsra-finalize zsra-inventory zsra-pdf; do
+    [ -x ".venv/bin/$cmd" ] || continue
+    dst="$bin/$cmd"
+    if [ -e "$dst" ] && [ ! -L "$dst" ]; then
+      echo "  [skip] $dst exists and is not a link: left alone"
+      continue
+    fi
+    ln -sfn "$PWD/.venv/bin/$cmd" "$dst"
+    n=$((n + 1))
+  done
+  echo "  $n commands linked in $bin"
+  case ":$PATH:" in
+    *":$bin:"*) ;;
+    *) echo "  $bin is not in PATH: add  export PATH=\"\$HOME/.local/bin:\$PATH\"  to ~/.bashrc or ~/.zshrc" ;;
+  esac
+}
+
+if [ "$CHECK_ONLY" = 0 ]; then
   echo "==> Python environment (.venv)"
   python3 -m venv .venv
   # pip first, by hash (see PIP_WHEEL above), then everything else with the fixed pip.
@@ -69,12 +106,18 @@ if [ "${1:-}" != "--check" ]; then
   .venv/bin/python -c "import sys; v=tuple(int(x) for x in '$pv'.split('.')[:3]); sys.exit(v < (26, 2, 2))" \
     || { echo "ERROR: pip $pv in .venv is older than $PIP_MIN (compromised eMudhra CAs): stopping before downloading anything else"; exit 1; }
   .venv/bin/python -m pip install --quiet --upgrade pip   # newer releases, if any, now downloaded with a safe pip
-  .venv/bin/pip install --quiet -e '.[pdf]'   # [pdf] = ReportLab, for report.pdf
+  extras=pdf                                  # [pdf] = ReportLab, for report.pdf
+  [ "$WEB" = 0 ] || extras=pdf,web             # [web] = Streamlit, for zsra web
+  .venv/bin/pip install --quiet -e ".[$extras]"
   echo "==> Lynis (copied to the target during the assessment, never installed)"
   if [ ! -f vendor/lynis/lynis ]; then
     git clone --quiet --depth 1 https://github.com/CISOfy/lynis vendor/lynis
   else
     git -C vendor/lynis pull --quiet --ff-only || echo "  (Lynis update failed: keeping the current version)"
+  fi
+  if [ "$LINK" = 1 ]; then
+    echo "==> Commands (no need to activate .venv)"
+    link_commands
   fi
   echo
 fi
@@ -84,5 +127,9 @@ if [ "$MISSING" = 1 ]; then
   echo "Install what is missing (commands above), then: ./setup.sh --check"
   echo "nmap, ssh-audit, Grype and Trivy are optional: without them those checks are skipped and the report says so."
 else
-  echo "All set. Activate the environment:  source .venv/bin/activate   then:  zsra --help"
+  if [ "$LINK" = 1 ] && command -v zsra >/dev/null 2>&1; then
+    echo "All set:  zsra --help    (zsra save NAME HOST -u USER ...  then  zsra NAME)"
+  else
+    echo "All set. Activate the environment:  source .venv/bin/activate   then:  zsra --help"
+  fi
 fi
