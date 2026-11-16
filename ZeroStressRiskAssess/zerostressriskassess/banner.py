@@ -15,12 +15,18 @@ from . import __version__
 # The logo lives in a separate file so it can be replaced without touching the code:
 #   - edit zerostressriskassess/logo.txt (applies to every user);
 #   - or point the ZSRA_LOGO environment variable to another file (applies to the current user only).
-# Block letters with a box-drawing shadow, in red, like the title of Ghidra. If the file is missing, only the name
-# is shown.
+# Block letters with a box-drawing shadow, like the title of Ghidra, in the orange of the portal (the --brand colour
+# of ZeroStressRiskAssessWeb, #ea580c). If the file is missing, only the name is shown.
 DEFAULT_ART = Path(__file__).with_name("logo.txt")
 _CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")   # control sequences: an art file must not alter the terminal
-# 256-colour red (Ghidra's red); terminals without 256 colours show their nearest red.
-LOGO_COLOUR = "1;38;5;160"
+# The portal's orange: exact on terminals with 24-bit colour (COLORTERM=truecolor, nearly all of them today), else the
+# nearest of the 256 colours (202, #ff5f00).
+LOGO_TRUECOLOUR = "1;38;2;234;88;12"
+LOGO_COLOUR = "1;38;5;202"
+
+
+def logo_colour() -> str:
+    return LOGO_TRUECOLOUR if os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit") else LOGO_COLOUR
 
 
 def load_art(path=None) -> str:
@@ -64,7 +70,7 @@ def render(stream=None, art=None) -> str:
     stream = stream or sys.stdout
     art = load_art() if art is None else art
     head = _color("1", TITLE, stream) + f" {__version__}"
-    top = f"{_color(LOGO_COLOUR, art, stream)}\n" if art else ""
+    top = f"{_color(logo_colour(), art, stream)}\n" if art else ""
     return f"{top}  {head}\n  {SUBTITLE}\n"
 
 

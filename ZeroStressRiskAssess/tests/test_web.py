@@ -142,6 +142,20 @@ class AppPagesTest(unittest.TestCase):
         self.assertEqual(at.number_input[0].value, 2222)
         self.assertIn("danielb", [t.value for t in at.text_input])
 
+    def test_theme_toggle_keeps_the_section(self):
+        at = self._app()
+        at.segmented_control(key="page").set_value("Reports").run()
+        html = " ".join(h.proto.body for h in at.html)
+        self.assertIn("☾ Dark", html)
+        self.assertIn("stActiveTheme-", html)
+        self.assertIn("page=Reports", html)
+        # back from the reload: token and section in the address, the section is restored
+        at2 = AppTest.from_file(APP, default_timeout=30)
+        at2.query_params["token"] = "tok"
+        at2.query_params["page"] = "Tools"
+        at2.run()
+        self.assertEqual(at2.segmented_control(key="page").value, "Tools")
+
     def test_theme_of_the_portal(self):
         cmd = " ".join(build_command(8501, "/tmp/x"))
         self.assertIn("--theme.light.primaryColor=#c2410c", cmd)   # the portal's orange (app.css --accent)
