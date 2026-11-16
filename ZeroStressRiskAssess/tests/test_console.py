@@ -27,8 +27,11 @@ class BannerTest(unittest.TestCase):
         self.assertIn("█", art)
         self.assertIn("╚", art)
 
-    def test_logo_in_red_on_a_terminal_plain_elsewhere(self):
-        self.assertIn("\x1b[" + banner.LOGO_COLOUR + "m", banner.render(Tty()))
+    def test_logo_in_orange_on_a_terminal_plain_elsewhere(self):
+        with mock.patch.dict(os.environ, {"COLORTERM": ""}):
+            self.assertIn("\x1b[" + banner.LOGO_COLOUR + "m", banner.render(Tty()))      # 256 colours: 202
+        with mock.patch.dict(os.environ, {"COLORTERM": "truecolor"}):
+            self.assertIn("\x1b[1;38;2;234;88;12m", banner.render(Tty()))               # the portal's #ea580c
         with mock.patch.dict(os.environ, {"NO_COLOR": "1"}):
             self.assertNotIn("\x1b[", banner.render(Tty()))
 

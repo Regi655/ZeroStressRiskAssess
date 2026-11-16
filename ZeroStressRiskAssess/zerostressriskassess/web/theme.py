@@ -83,6 +83,9 @@ h1, h2, h3 {{ font-weight: 700; }}
   font-size: .9rem; color: {c['muted']}; }}
 .zsra-matrix td {{ color: {c['accent_fg']}; font-weight: 700; font-size: 1.1rem; }}
 .zsra-matrix td.empty {{ opacity: .35; }}
+.zsra-theme {{ font: inherit; font-size: .85rem; padding: 3px 10px; border: 1px solid {c['line_strong']};
+  border-radius: 999px; background: {c['bg']}; color: {c['fg']}; cursor: pointer; white-space: nowrap; float: right; }}
+.zsra-theme:hover {{ border-color: {c['accent_line']}; color: {c['accent']}; }}
 .zsra-foot {{ color: {c['muted']}; font-size: .8rem; border-top: 1px solid {c['line']}; margin-top: 32px;
   padding-top: 10px; }}
 </style>"""

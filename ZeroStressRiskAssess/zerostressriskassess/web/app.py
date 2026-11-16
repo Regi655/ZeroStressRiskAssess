@@ -12,11 +12,13 @@ from __future__ import annotations
 import argparse
 import base64
 import hmac
+import json
 import os
 import shlex
 import shutil
 import sys
 from pathlib import Path
+from urllib.parse import urlencode
 
 import streamlit as st
 
@@ -51,6 +53,9 @@ def _check_access():
     given = st.query_params.get("token", "")
     if expected and given and hmac.compare_digest(expected.encode(), given.encode()):
         st.session_state.authorised = True
+        page = st.query_params.get("page", "")
+        if page in PAGES:          # back from the theme toggle's reload: same section as before
+            st.session_state.goto = page
         st.query_params.clear()   # the token leaves the address bar once the session is open
         return
     st.error("Access denied. Open the address printed by `zsra-web` in the terminal (it contains the access token).")
@@ -505,6 +510,35 @@ def _portal_settings():
                 st.error(f"{exc}: not saved.")
 
 
+def _theme_toggle(page) -> str:
+    """The portal's theme button ("☾ Dark" in the light theme, "☀ Light" in the dark one).
+
+    Streamlit keeps the theme chosen in its own Settings in this browser's localStorage ("stActiveTheme-/-v2":
+    "Light", "Dark" or "System") and reads it only when the page loads. So the button writes that value and reloads.
+    A reload starts a new Streamlit session: the address carries the access token again (this browser already has
+    it: it opened the page with it) and the current section, and _check_access removes both from the address bar.
+    Only fixed strings, the token (letters, digits, - and _) and a section name from PAGES go into the script.
+    """
+    dark = _kind() == "dark"
+    nxt, label = ("Light", "☀ Light") if dark else ("Dark", "☾ Dark")
+    token = os.environ.get("ZSRA_WEB_TOKEN", "")
+    query = json.dumps("?" + urlencode({"token": token, "page": page if page in PAGES else PAGES[0]}))
+    return f"""<button type="button" class="zsra-theme" id="zsra-theme" aria-pressed="{'true' if dark else 'false'}"
+title="Switch the theme (kept in this browser)">{label}</button>
+<script>
+(function () {{
+  var b = document.getElementById("zsra-theme");
+  if (!b || b.dataset.wired) return;
+  b.dataset.wired = "1";
+  b.addEventListener("click", function () {{
+    try {{ localStorage.setItem("stActiveTheme-" + window.location.pathname + "-v2", {json.dumps(json.dumps(nxt))}); }}
+    catch (e) {{ return; }}               /* storage off: nothing to remember the choice with */
+    window.location.assign(window.location.pathname + {query});
+  }});
+}})();
+</script>"""
+
+
 # ---------------------------------------------------------------------- main
 def main():
     st.set_page_config(page_title="ZeroStressRiskAssess", page_icon="🟧", layout="wide",
@@ -515,9 +549,10 @@ def main():
         st.session_state.page = st.session_state.pop("goto")
     st.session_state.setdefault("page", PAGES[0])
     # The portal's header: the brand on the left, the sections on the right, a thin line under it.
-    left, right = st.columns([2, 5], vertical_alignment="center")
+    left, right, end = st.columns([2, 5, 1], vertical_alignment="center")
     left.html(f'<div class="zsra-brand">ZeroStress<span>RiskAssess</span><small>{__version__}</small></div>')
     page = right.segmented_control("Section", PAGES, key="page", required=True, label_visibility="collapsed")
+    end.html(_theme_toggle(page), unsafe_allow_javascript=True)
     st.html('<hr class="zsra-line">')
     running = sum(j.running for j in jobs.list_jobs(OUT_DIR))
     if running and page != "Runs":

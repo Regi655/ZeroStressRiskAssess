@@ -183,7 +183,8 @@ is intended only for automation in authorised contexts).
   ([section 5](#shorter-commands)).
 - **The web interface looks like the portal**: white and orange, the same header, cards, level colours and dark
   theme as ZeroStressRiskAssessWeb, sections at the top instead of a sidebar.
-- **New banner**: the mascot is replaced by *ZSRA* in red block letters ([the logo](#the-logo)).
+- **New banner**: the mascot is replaced by *ZSRA* in block letters, in the portal's orange ([the logo](#the-logo)).
+- 1.6.1: a **☾ Dark / ☀ Light** button in the header of the web interface, as in the portal.
 
 ## What's new in 1.5.0
 
@@ -553,8 +554,8 @@ zsra web --port 8600 --no-browser --out-dir ~/assessments
 
 ![The web interface: a report of the Docker lab](ZeroStressRiskAssess/docs/screenshot-web.png)
 
-*A report of the Docker lab (fake data). Light and dark theme follow the system; Streamlit's menu (⋮ › Settings)
-switches them.*
+*A report of the Docker lab (fake data). The theme follows the system until you press **☾ Dark** / **☀ Light** in the
+header, as in the portal: the choice is kept in this browser.*
 
 | Section | What it does |
 |---|---|
@@ -602,7 +603,8 @@ zsra targets                   # the saved targets      zsra forget laptop   # r
 
 ### The logo
 
-At startup (console or direct command) `zsra` shows *ZSRA* in red block letters, read from the text file
+At startup (console or direct command) `zsra` shows *ZSRA* in block letters, in the orange of the portal (`#ea580c`;
+on terminals without 24-bit colour the nearest of the 256), read from the text file
 `zerostressriskassess/logo.txt`:
 
 ```
@@ -1149,7 +1151,7 @@ Done in version 1.x, for the record: RHEL family support, `--recon-only`, two-ph
 signature), comparison of two runs, resources and disks checks, rkhunter warnings verified before rating,
 `--no-install`, inventory of several machines, PDF report; in 1.4.0 the web interface, a `--recover` that removes only
 zsra's own packages, and tests with CI in the repository; in 1.5.0 the upload to the portal of the suite; in 1.6.0 saved targets, passwords asked when needed, one `zsra`
-command for everything, the web interface in the portal's style and the ZSRA logo. Rocky 9 and a real laptop (NVMe SMART) were run end to
+command for everything, the web interface in the portal's style and the ZSRA logo; in 1.6.1 the orange logo and the theme button. Rocky 9 and a real laptop (NVMe SMART) were run end to
 end on 2026-10-22; a failing disk has still never been seen, so the SMART warnings are tested on output written in
 smartctl's format.
 
