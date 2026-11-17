@@ -150,6 +150,7 @@ is intended only for automation in authorised contexts).
 ## Table of contents
 
 - [Disclaimer](#disclaimer) (including the [international legal framework](#-international-legal-framework))
+- [What's new in 1.6.2 (security fixes)](#whats-new-in-162-security-fixes)
 - [What's new in 1.6.0](#whats-new-in-160)
 - [What's new in 1.5.0](#whats-new-in-150)
 - [What's new in 1.4.0](#whats-new-in-140)
@@ -171,6 +172,32 @@ is intended only for automation in authorised contexts).
 15. [References](#15-references)
 
 ---
+
+## What's new in 1.6.2 (security fixes)
+
+Fixes from a security review of 1.6.1. **Update**: the first one matters on any target where other people have an
+account.
+
+- **Command injection as root, fixed.** The DNS check read the configuration path from the command line of the DNS
+  process and, if the path contained `*`, put it into a root command unquoted. A user of the target could start a
+  process named `dnsmasq` with a crafted argument (in Docker containers, where unprivileged users may bind port 53, or
+  when the owner of port 53 was guessed from the process name) and have a command run as root during the assessment.
+  Paths with a wildcard are now accepted only with a strict shape, and a process recognised only by its name is used
+  only if it runs the packaged program.
+- **`--accept-new-hostkey` saves the key.** Before, the key was accepted but never written to `~/.ssh/known_hosts`, so
+  every run with the option accepted any key (no protection against a man-in-the-middle). Now it behaves like
+  OpenSSH's `accept-new`: accepted once, saved (hashed), verified afterwards. It can no longer be saved in a target.
+- **Lynis pinned and verified.** `setup.sh` no longer runs `git pull`: `vendor/lynis` is the validated commit, and
+  zsra refuses to send a different or modified copy (Lynis runs as root on the targets).
+- **The target goes back to how it was.** The `clamav` user and group created by the package are removed if they did
+  not exist before the run; only the package files downloaded during the run are deleted (`apt-get clean` used to
+  empty the owner's whole cache; `dnf clean all` is gone).
+- Smaller: container IDs and package names allow-listed or quoted before reaching a root command; `sudo -k` so the
+  sudo password is always consumed by sudo; IPv6 zone names validated; Stop in the web interface checks that the PID
+  is still the run's; Grype installed with its checksum verified instead of `curl | sudo sh`.
+
+If an earlier version left a `clamav` user on a machine (rkhunter reports *User 'clamav' has been added*) and ClamAV
+is not installed there: `sudo userdel clamav; sudo groupdel clamav`.
 
 ## What's new in 1.6.0
 
@@ -254,15 +281,26 @@ With `--local`, steps 1–2 and the SSH connection are skipped: the report state
 | Python ≥ 3.9 with `venv` | yes | the tool is written in Python | `sudo apt install python3 python3-venv` |
 | git | yes | cloning the repository and Lynis | `sudo apt install git` |
 | paramiko | yes | SSH connection | installed by `setup.sh` into `.venv` |
-| Lynis | recommended | ~250 hardening checks | cloned by `setup.sh` into `vendor/lynis` |
+| Lynis | recommended | ~250 hardening checks | `setup.sh` downloads the validated commit into `vendor/lynis` (pinned in `zerostressriskassess/portable.py`, checked before every run) |
 | nmap | recommended | ports and services seen from the network, exposure | `sudo apt install nmap` |
 | ssh-audit | recommended | SSH algorithms | `sudo apt install ssh-audit` (or `pipx install ssh-audit`) |
-| Grype | recommended | CVEs of the installed packages; the only source of the KEV flag (actively exploited) | `curl -sSfL https://get.anchore.io/grype \| sudo sh -s -- -b /usr/local/bin` |
+| Grype | recommended | CVEs of the installed packages; the only source of the KEV flag (actively exploited) | release from GitHub with its checksum verified (below) |
 | Trivy | optional | second CVE source: with Grype the results are merged, alone it replaces Grype | Aqua's signed APT repository, see below |
 | ReportLab (Python) | recommended | `report.pdf` | installed by `setup.sh` into `.venv`; without it no PDF, the other formats are unchanged |
 | age | for `zsra-finalize` | encryption of the final report | `sudo apt install age` |
 | ssh-keygen | for `zsra-finalize --sign-key` | signature of the final report | `sudo apt install openssh-client` (normally already there) |
 | Docker + compose plugin | lab only | test machines | <https://docs.docker.com/engine/install/ubuntu/> |
+
+**Grype, installed with its checksum verified** (rather than `curl ... | sudo sh`, which runs whatever the server sends,
+as root). Pick the current version on <https://github.com/anchore/grype/releases>:
+
+```bash
+V=0.121.0
+curl -fsSLO https://github.com/anchore/grype/releases/download/v$V/grype_${V}_linux_amd64.tar.gz
+curl -fsSLO https://github.com/anchore/grype/releases/download/v$V/grype_${V}_checksums.txt
+sha256sum --ignore-missing -c grype_${V}_checksums.txt     # must say: OK
+tar -xzf grype_${V}_linux_amd64.tar.gz grype && sudo install -m 755 grype /usr/local/bin/grype
+```
 
 The "recommended" tools are optional: if one is missing, the corresponding check is **skipped** and the report says
 so in the *Checks performed* section. The risk is still computed from the available sources.
@@ -333,7 +371,7 @@ External programs:
   [ok]      python3 3.12.3
   [missing] nmap            -> sudo apt install nmap
   [missing] ssh-audit       -> sudo apt install ssh-audit   (or: pipx install ssh-audit)
-  [missing] grype (CVE)     -> curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin
+  [missing] grype (CVE)     -> see README, Requirements (release from GitHub, checksum verified)
   [missing] trivy (CVE, optional second source) -> see README, Requirements (Aqua's signed APT repository)
   [ok]      git
   [missing] docker (lab only) -> https://docs.docker.com/engine/install/ubuntu/
@@ -639,7 +677,9 @@ and in `ps`).
 
 The target's host key is verified against `~/.ssh/known_hosts`. If the target is not there, ZeroStressRiskAssess stops:
 connect once with `ssh` and verify the fingerprint, or use `--accept-new-hostkey` **only if you are sure you are
-talking to the right machine** (trusted network, first contact).
+talking to the right machine** (trusted network, first contact). As OpenSSH's `accept-new`, the key is then saved in
+`~/.ssh/known_hosts` (hashed) and verified at every following run; a key that changed is always refused. The option
+cannot be saved in a target (`zsra save`): it is a first-contact decision.
 
 ### From inside
 
@@ -818,7 +858,7 @@ Verified on the lab: 132 installed packages before and after, no manifest.
 | `--ask-key-pass` | no | prompt for the key passphrase |
 | `--ask-sudo-pass` | no | prompt for the sudo password |
 | `--sudo-pass-env VAR` | — | read the sudo password from the environment variable `VAR` (automation) |
-| `--accept-new-hostkey` | no | accept an unknown host key (first contact only) |
+| `--accept-new-hostkey` | no | accept an unknown host key and save it in `~/.ssh/known_hosts` (first contact only) |
 | `--lynis-dir` | `vendor/lynis` | Lynis copy to bring to the target |
 | `--nmap-ports` | top 1000 | `1-1024,8080`; `-` = all |
 | `--nse-tls` | no | also run `ssl-enum-ciphers` (TLS protocols/ciphers; more connections) |
@@ -987,7 +1027,13 @@ would have dropped by 2.
   removed with chkrootkit. On the RHEL family `epel-release` is installed if needed and removed too. smartmontools is
   not installed in a container. A manifest in `/var/lib/zerostressriskassess` records what to remove, even after an
   interruption (`--recover`). Only those packages are removed: anything else that appeared during the run or before a
-  `--recover` (for example an automatic kernel update) is listed in the report and left installed.
+  `--recover` (for example an automatic kernel update) is listed in the report and left installed. The system
+  users and groups these packages create (`clamav`; `clamupdate`, `clamscan`, `virusgroup` with EPEL) are removed
+  too, if they did not exist before the run. Only the package files downloaded during the run are deleted from the
+  apt cache: the owner's cached packages stay.
+- Side effects that are not undone, by nature: the package index is refreshed (`apt-get update`, as any update
+  would), and while the tools are installed services of newly installed packages are not started (`policy-rc.d`,
+  removed at the end).
 - A package removed earlier **without purge** (state `rc` in `dpkg -l`: its configuration files are still there) counts
   as *not installed*: the tool installs it, and at the end removes it **without** purging, so the owner's configuration
   files stay exactly as they were (verified with smartmontools and an edited `/etc/smartd.conf`, same checksum).
@@ -996,7 +1042,8 @@ would have dropped by 2.
   already has rkhunter, it is used as it is, the date of its baseline is shown in the report, and `rkhunter --propupd`
   is never run.
 - **Lynis** is not installed: it is copied as an in-memory archive, verified with SHA-256, extracted into a temporary
-  root-owned directory (`/tmp/zerostressriskassess-lynis.XXXXXX`, mode 700), executed and deleted.
+  root-owned directory (`/tmp/zerostressriskassess-lynis.XXXXXX`, mode 700), executed and deleted. Only the validated
+  commit of Lynis is ever sent: a `vendor/lynis` at another commit or with local changes is refused.
 - **Grype** and **Trivy** run on the controller: only the package list is read from the target.
 - With **`--no-install`** nothing at all is installed, and nothing is removed (section 5).
 - No service is modified or restarted. System logs record the SSH connection and the sudo commands as usual (as they
@@ -1042,7 +1089,8 @@ with Internet access. "in common" should match "A"; missing CVEs point to a diff
 | `SSHException: Server '...' not found in known_hosts` | the target is not in `known_hosts`: run `ssh user@host` once and verify the fingerprint, or use `--accept-new-hostkey` |
 | `Root privileges are required` | the user has no sudo, or sudo asks for a password: add `--ask-sudo-pass` |
 | in the report: `nmap / ssh-audit / grype / trivy not installed` | install it on the **controller** (section 2) or ignore it: the check is skipped and declared |
-| in the report: `Lynis not found on the controller` | `./setup.sh` or `git clone https://github.com/CISOfy/lynis vendor/lynis` |
+| in the report: `Lynis not found on the controller` | `./setup.sh` |
+| in the report: `Lynis not run: ... not the validated ...` or `files changed or added` | `vendor/lynis` is not the pinned commit, or was modified: `./setup.sh` puts the validated one back (Lynis runs as root on the target, nothing else is sent) |
 | `ClamAV signatures not updated` | the target cannot reach `database.clamav.net`: ClamAV cannot work, and the report says so |
 | `chkrootkit NOT run: programs missing on the target` | chkrootkit stopped because a program it needs is missing (usually `strings`): install `binutils` or let the tool install it (it does unless the package is unavailable) |
 | `chkrootkit: hidden-directory check (chkdirs) not reliable on this file system` | normal on BTRFS and in containers (overlayfs): chkdirs counts directory links, which do not add up on those file systems. Not a finding |
@@ -1151,7 +1199,7 @@ Done in version 1.x, for the record: RHEL family support, `--recon-only`, two-ph
 signature), comparison of two runs, resources and disks checks, rkhunter warnings verified before rating,
 `--no-install`, inventory of several machines, PDF report; in 1.4.0 the web interface, a `--recover` that removes only
 zsra's own packages, and tests with CI in the repository; in 1.5.0 the upload to the portal of the suite; in 1.6.0 saved targets, passwords asked when needed, one `zsra`
-command for everything, the web interface in the portal's style and the ZSRA logo; in 1.6.1 the orange logo and the theme button. Rocky 9 and a real laptop (NVMe SMART) were run end to
+command for everything, the web interface in the portal's style and the ZSRA logo; in 1.6.1 the orange logo and the theme button; in 1.6.2 the fixes of a security review. Rocky 9 and a real laptop (NVMe SMART) were run end to
 end on 2026-10-22; a failing disk has still never been seen, so the SMART warnings are tested on output written in
 smartctl's format.
 

@@ -55,7 +55,7 @@ def docker_scan(extra=(), ufw="active"):
         ("getent group docker", "docker:x:996:developer\n", 0),
         ("stat -L -c", "660|root|docker|/var/run/docker.sock\n", 0),
         ("pgrep -x dockerd", "dockerd \n", 0),
-        ("docker ps -q", "a1\nb2\n", 0),
+        ("docker ps -q", "a1b2c3d4e5f6\nb2c3d4e5f6a7\n", 0),   # real format: 12 hex digits
         ("docker inspect", fixture("docker_inspect_sandbox.txt"), 0),
         ("ufw status", fixture("ufw_status_active.txt") if ufw == "active" else "Status: inactive\n", 0),
     ])

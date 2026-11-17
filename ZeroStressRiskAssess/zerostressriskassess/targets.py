@@ -20,7 +20,8 @@ from pathlib import Path
 
 NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,39}$")
 # Options that would put a secret on disk, or that make no sense in a saved line.
-REFUSED = {"--sudo-pass-env", "--yes", "--recover", "--out-dir"}
+# --accept-new-hostkey: a first-contact decision; saved in a target it would become a habit.
+REFUSED = {"--sudo-pass-env", "--yes", "--recover", "--out-dir", "--accept-new-hostkey"}
 RESERVED = {"save", "targets", "forget", "web", "portal", "compare", "finalize", "inventory", "pdf", "help"}
 
 

@@ -110,7 +110,8 @@ def run(ctx) -> ScanResult:
             res.add("info", "Docker API on the network with TLS and client verification", ", ".join(tcp_api))
 
     # ---- running containers
-    ids = rem.run("docker ps -q", sudo=True, timeout=60).out.split()
+    # Allow-list as everywhere else: the IDs come from the target and go into a root command.
+    ids = [i for i in rem.run("docker ps -q", sudo=True, timeout=60).out.split() if re.fullmatch(r"[0-9a-f]{12,64}", i)]
     if not ids:
         res.add("info", "Docker present, no running containers")
         return res

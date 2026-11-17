@@ -60,13 +60,19 @@ class Job:
 
     @property
     def running(self) -> bool:
-        return self.rc is None and _alive(self.info.get("pid"))
+        return self.rc is None and _alive(self.info.get("pid")) and self._same_process()
+
+    def _same_process(self) -> bool:
+        """The PID in job.json is still OUR run: after a restart of zsra web and a long time, the number may belong
+        to another process. The start time of the process (/proc) is recorded with the PID and compared."""
+        want = self.info.get("starttime")
+        return want is None or _starttime(self.info.get("pid")) == want
 
     @property
     def status(self) -> str:
         rc = self.rc
         if rc is None:
-            return "running" if _alive(self.info.get("pid")) else "lost"   # killed without writing rc
+            return "running" if self.running else "lost"   # killed without writing rc
         return {0: "completed", 130: "interrupted"}.get(rc, f"failed (rc={rc})")
 
     @property
@@ -84,6 +90,15 @@ class Job:
         except (ProcessLookupError, PermissionError):
             return False
         return True
+
+
+def _starttime(pid):
+    """Start time of a process in clock ticks since boot (field 22 of /proc/PID/stat), or None (not Linux, gone)."""
+    try:
+        stat = Path(f"/proc/{int(pid)}/stat").read_text()
+        return int(stat.rsplit(")", 1)[1].split()[19])   # after the command name, which may contain spaces
+    except (OSError, ValueError, IndexError, TypeError):
+        return None
 
 
 def _alive(pid) -> bool:
@@ -178,7 +193,8 @@ def start(out_dir, argv, secrets=None, kind="scan", confirm=True) -> Job:
         proc.stdin.close()
     except BrokenPipeError:
         pass
-    info = {"id": jid, "kind": kind, "argv": full, "pid": proc.pid, "started": time.strftime("%Y-%m-%d %H:%M:%S"),
+    info = {"id": jid, "kind": kind, "argv": full, "pid": proc.pid, "starttime": _starttime(proc.pid),
+            "started": time.strftime("%Y-%m-%d %H:%M:%S"),
             "target": argv[0] if argv else "local"}
     _write_private(d / "job.json", json.dumps(info, indent=2))
     return Job(jid, d, info)

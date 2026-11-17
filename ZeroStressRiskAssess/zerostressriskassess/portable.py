@@ -21,29 +21,68 @@ import hashlib
 import io
 import re
 import shlex
+import shutil
+import subprocess
 import tarfile
 from pathlib import Path
+
+# Lynis runs AS ROOT on every target, so the copy sent is the one validated, not "whatever is on master today".
+# Upstream has no 3.1.8 tag: this is the master commit validated in the lab (PROGRAM_VERSION 3.1.8). To update:
+# read the changes upstream, run the lab, then change this line (setup.sh reads it from here).
+LYNIS_REPO = "https://github.com/CISOfy/lynis"
+LYNIS_COMMIT = "9319416fa0726369ab0a48f686155a90363f3f9c"
+DEFAULT_DIR = Path(__file__).resolve().parent.parent / "vendor" / "lynis"
 
 REMOTE_DIR_RE = re.compile(r"^/tmp/zerostressriskassess-lynis\.[A-Za-z0-9]{6}$")
 ARCHIVE = ".riskassess_lynis.tgz"
 
 
 def check_dir(path: str) -> str:
-    """Lynis version in the local directory, or ValueError with the reason."""
+    """Lynis version in the local directory, or ValueError with the reason.
+
+    A git checkout (vendor/lynis from setup.sh) must be exactly LYNIS_COMMIT with no local change. The default
+    directory must be such a checkout. A different directory given with --lynis-dir and without .git is the
+    operator's own choice: accepted, and the report says it was not verified ("unverified" in the version)."""
     p = Path(path).expanduser()
     if not (p / "lynis").is_file() or not (p / "include").is_dir():
         raise ValueError(f"{path}: not a Lynis directory (the 'lynis' file and the 'include' directory are required). "
-                         "Download it with: git clone https://github.com/CISOfy/lynis")
+                         "Run ./setup.sh")
     m = re.search(r'PROGRAM_VERSION="([0-9.]+)"', (p / "lynis").read_text(errors="replace"))
-    return m.group(1) if m else "?"
+    version = m.group(1) if m else "?"
+    if (p / ".git").exists():
+        _verify_checkout(p)
+        return version
+    if p.resolve() == DEFAULT_DIR:
+        raise ValueError(f"{path}: not a git checkout, so it cannot be verified. Remove it and run ./setup.sh")
+    return version + " (unverified: --lynis-dir without git)"
+
+
+def _verify_checkout(p: Path) -> None:
+    git = shutil.which("git")
+    if not git:
+        raise ValueError(f"{p}: git is needed to verify the Lynis copy (sudo apt install git)")
+    head = subprocess.run([git, "-C", str(p), "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+    if head != LYNIS_COMMIT:
+        raise ValueError(f"{p} is at commit {head[:12] or '?'}, not the validated {LYNIS_COMMIT[:12]}: "
+                         "run ./setup.sh (Lynis runs as root on the target, only the validated copy is sent)")
+    dirty = subprocess.run([git, "-C", str(p), "status", "--porcelain", "--untracked-files=all"],
+                           capture_output=True, text=True).stdout.strip()
+    if dirty:
+        raise ValueError(f"{p}: files changed or added after the download ({dirty.splitlines()[0]} ...): "
+                         "not sent. Run: git -C vendor/lynis checkout -- . && git -C vendor/lynis clean -fd")
 
 
 def available(path: str) -> bool:
+    return why_unavailable(path) is None
+
+
+def why_unavailable(path: str):
+    """None if the directory can be sent, otherwise the reason (shown in the report)."""
     try:
         check_dir(path)
-        return True
-    except ValueError:
-        return False
+        return None
+    except ValueError as exc:
+        return str(exc)
 
 
 def pack(path: str):

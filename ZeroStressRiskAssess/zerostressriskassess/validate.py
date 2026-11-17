@@ -13,6 +13,7 @@ _LABEL = r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?"
 _HOST_RE = re.compile(rf"{_LABEL}(?:\.{_LABEL})*")
 _PKG_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9+._-]{0,127}")
 _PID_RE = re.compile(r"[0-9]{1,9}")
+_SCOPE_RE = re.compile(r"[A-Za-z0-9_.-]{1,32}")
 _PORTS_RE = re.compile(r"[0-9TU:,\-]{0,200}")
 _PATH_RE = re.compile(r"/[A-Za-z0-9._/@+,:=-]{0,255}")
 
@@ -21,11 +22,13 @@ def valid_host(h: str) -> bool:
     """IPv4/IPv6 address or hostname. Must not start with '-' (it would be parsed as an option)."""
     if not h or len(h) > 253:
         return False
+    addr, _, scope = h.partition("%")
     try:
-        ipaddress.ip_address(h)
-        return True
+        ip = ipaddress.ip_address(addr)
     except ValueError:
-        return bool(_HOST_RE.fullmatch(h))
+        return not scope and bool(_HOST_RE.fullmatch(h))
+    # IPv6 zone ("fe80::1%eth0"): ipaddress accepts ANY text after '%', so the zone has its own allow-list.
+    return not scope or (ip.version == 6 and bool(_SCOPE_RE.fullmatch(scope)))
 
 
 def valid_ports(p: str) -> bool:

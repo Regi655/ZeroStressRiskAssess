@@ -24,6 +24,7 @@ import shlex
 
 from .. import dnsprobe
 from ..models import ScanResult
+from ..pkgowner import owned
 
 # Recognised DNS programs -> (display name, base role)
 DAEMONS = {"named": ("BIND", None), "unbound": ("Unbound", "resolver"), "dnsmasq": ("dnsmasq", "forwarder"),
@@ -251,6 +252,17 @@ def check_dnsmasq(res, f: dict, is_exposed: bool) -> str:
 
 
 # ---------------------------------------------------------------------------- reading on the target
+def _packaged(ctx, guess: dict) -> dict:
+    """Keep a process recognised only by NAME (from_ps) if it runs the packaged daemon: any user can start a
+    process called "dnsmasq" with the arguments they like, and those arguments are then read and used."""
+    keep = {}
+    for name, d in guess.items():
+        exe = ctx.rem.run(f"readlink /proc/{int(d['pid'])}/exe", sudo=True).out.strip()
+        if exe.startswith("/") and not exe.endswith("(deleted)") and owned(ctx, exe):
+            keep[name] = d
+    return keep
+
+
 def _cmdline(rem, pid: int) -> str:
     return rem.run(f"tr '\\0' ' ' < /proc/{int(pid)}/cmdline", sudo=True).out.strip()
 
@@ -266,10 +278,28 @@ def _opt(cmdline: str, *names) -> str | None:
     return None
 
 
+# A path with a wildcard cannot be quoted (the shell must expand it), so it is accepted only with this shape:
+# absolute, letters/digits/_ . / - and at most one '*'. Nothing the shell could interpret as code.
+SAFE_GLOB = re.compile(r"/[\w./-]*\*?[\w./-]*")
+
+
 def _read_files(rem, patterns) -> str:
-    """Contents of several files (wildcards allowed), one after another."""
-    q = " ".join(shlex.quote(p).replace("'*'", "*") if "*" not in p else p for p in patterns)
-    return rem.run(f"for f in {q}; do [ -f \"$f\" ] && cat \"$f\"; echo; done", sudo=True).out
+    """Contents of several files (wildcards allowed), one after another.
+
+    The paths come from the target (the command line of the DNS process, include lines of its configuration):
+    UNTRUSTED. A path without '*' is quoted; one with '*' must match SAFE_GLOB, otherwise it is dropped.
+    Before 1.6.2 a path with '*' went into this root command as it was: a process named "dnsmasq" started by any
+    user with  -C '/x*; do COMMAND; done; for f in /y*'  ran COMMAND as root during the assessment.
+    """
+    words = []
+    for p in patterns:
+        if "*" not in p:
+            words.append(shlex.quote(p))
+        elif SAFE_GLOB.fullmatch(p) and ".." not in p.split("/"):
+            words.append(p)
+    if not words:
+        return ""
+    return rem.run(f"for f in {' '.join(words)}; do [ -f \"$f\" ] && cat \"$f\"; echo; done", sudo=True).out
 
 
 def _unbound_text(rem, main: str) -> str:
@@ -314,7 +344,7 @@ def run(ctx) -> ScanResult:
     found = dns_listeners(ss_out)
     orphan = port53_addrs(ss_out) - {a for d in found.values() for a in d["addrs"]}
     if orphan:
-        guess = from_ps(rem.run("ps -eo pid=,comm=", sudo=True).out, orphan)
+        guess = _packaged(ctx, from_ps(rem.run("ps -eo pid=,comm=", sudo=True).out, orphan))
         for n, d in guess.items():
             found.setdefault(n, d)
         if guess:

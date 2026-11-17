@@ -7,8 +7,11 @@ lynis_318_laptop_report.dat is the REAL report of Lynis 3.1.8 (official reposito
 the development sandbox.
 """
 import os
+import shutil
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from zerostressriskassess import portable
@@ -70,9 +73,36 @@ class RealRunTest(unittest.TestCase):
 class DirectoryTest(unittest.TestCase):
     def test_version_and_wrong_directory(self):
         with tempfile.TemporaryDirectory() as t:
-            self.assertEqual(portable.check_dir(str(fake_lynis_dir(t))), "9.9.9")
             with self.assertRaises(ValueError):
-                portable.check_dir(t)
+                portable.check_dir(t)                       # not a Lynis directory
+            d = fake_lynis_dir(t)
+            with self.assertRaises(ValueError) as e:        # a .git that is not the validated commit
+                portable.check_dir(str(d))
+            self.assertIn("not the validated", str(e.exception))
+            shutil.rmtree(d / ".git")                       # the operator's own copy, without git: allowed, said
+            self.assertEqual(portable.check_dir(str(d)), "9.9.9 (unverified: --lynis-dir without git)")
+            with mock.patch.object(portable, "DEFAULT_DIR", d.resolve()):
+                with self.assertRaises(ValueError):         # ...but never as the default vendor/lynis
+                    portable.check_dir(str(d))
+
+    @unittest.skipUnless(shutil.which("git"), "git not installed")
+    def test_only_the_pinned_clean_checkout_is_sent(self):
+        """Audit 1.6.2: Lynis runs as root on every target, only the validated commit, unmodified, is sent."""
+        with tempfile.TemporaryDirectory() as t:
+            d = fake_lynis_dir(t)
+            shutil.rmtree(d / ".git")
+            git = ["git", "-C", str(d), "-c", "user.email=t@t", "-c", "user.name=t"]
+            for cmd in (["init", "-q"], ["add", "-A"], ["commit", "-qm", "x"]):
+                subprocess.run(git + cmd, check=True, capture_output=True)
+            head = subprocess.run(git + ["rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+            with mock.patch.object(portable, "LYNIS_COMMIT", head):
+                self.assertEqual(portable.check_dir(str(d)), "9.9.9")
+                (d / "include" / "evil").write_text("rm -rf /")            # a file added after the download
+                self.assertIn("files changed or added", portable.why_unavailable(str(d)))
+                (d / "include" / "evil").unlink()
+                (d / "lynis").write_text((d / "lynis").read_text() + "\nid\n")   # a file modified
+                self.assertFalse(portable.available(str(d)))
+            self.assertIn("not the validated", portable.why_unavailable(str(d)))   # another commit
 
     def test_archive_without_git(self):
         import io

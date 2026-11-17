@@ -70,7 +70,7 @@ class ShadowedCommandsTest(unittest.TestCase):
 class WrapTest(unittest.TestCase):
     def test_trusted_path_and_neutral_locale(self):
         w = Remote._wrap("ps -e", need_sudo=True, has_sudo_pw=True)
-        self.assertTrue(w.startswith("sudo -S -p '' bash -c "))
+        self.assertTrue(w.startswith("sudo -k -S -p '' bash -c "))   # -k: sudo always reads the password line
         inner = shlex.split(w)[-1]
         self.assertIn("LC_ALL=C", inner)
         self.assertIn("PATH=" + TRUSTED_PATH, inner)

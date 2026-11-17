@@ -253,11 +253,20 @@ class NoPtraceTest(unittest.TestCase):
 
     def test_named_identified_from_ps(self):
         _, got = scan("named", [("ps -eo pid=,comm=", fixture("ps_no_ptrace.txt"), 0),
+                                ("readlink /proc/", "/usr/sbin/named", 0), ("dpkg -S", "bind9: /usr/sbin/named", 0),
                                 ("cmdline", "named -u bind", 0),
                                 ("named-checkconf -p", fixture("named_checkconf_ns1.txt"), 0)],
                       OPEN, None, {"isp-lab.example": {"allowed": True, "records": 13, "names": []}})
         self.assertIn(("high", "DNS: OPEN resolver - answers recursive queries from the controller"), got)
         self.assertIn(("info", "DNS: process identified from the process list, not from the sockets"), got)
+
+    def test_a_process_only_named_like_a_daemon_is_not_trusted(self):
+        """Audit 1.6.2: the name comes from ps and anyone chooses it. Not the packaged binary: not used."""
+        _, got = scan("named", [("ps -eo pid=,comm=", fixture("ps_no_ptrace.txt"), 0),
+                                ("readlink /proc/", "/home/eve/named", 0), ("dpkg -S", "", 1),
+                                ("cmdline", "named -c /etc/shadow", 0)],
+                      OPEN, None, {})
+        self.assertNotIn(("info", "DNS: process identified from the process list, not from the sockets"), got)
 
     def test_nmap_only_at_least_external_probes(self):
         rem = FakeRemote(host="172.28.7.99")
@@ -272,3 +281,33 @@ class NoPtraceTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UntrustedPathsTest(unittest.TestCase):
+    """Audit 1.6.2: paths read from the target's process command line went into a ROOT command unquoted when they
+    contained '*'. The exact payload of the audit must not reach the shell."""
+
+    class Rec:
+        def __init__(self):
+            self.cmds = []
+
+        def run(self, cmd, sudo=False, **kw):
+            self.cmds.append(cmd)
+            return type("R", (), {"out": "", "rc": 0})()
+
+    def test_wildcard_payload_is_dropped(self):
+        payload = dns._opt("dnsmasq -C '/x*; do touch /root/PWNED; done; for f in /y*'", "-C", "--conf-file")
+        rem = self.Rec()
+        dns._read_files(rem, [payload, "/etc/dnsmasq.d/*"])
+        self.assertEqual(rem.cmds, ['for f in /etc/dnsmasq.d/*; do [ -f "$f" ] && cat "$f"; echo; done'])
+
+    def test_plain_paths_are_quoted_and_safe_globs_kept(self):
+        rem = self.Rec()
+        dns._read_files(rem, ["/etc/my conf;id", "/etc/unbound/unbound.conf.d/*.conf", "/etc/../x*", "/a*b*"])
+        self.assertEqual(rem.cmds[0].split("; do")[0],
+                         "for f in '/etc/my conf;id' /etc/unbound/unbound.conf.d/*.conf")
+
+    def test_nothing_acceptable_runs_nothing(self):
+        rem = self.Rec()
+        self.assertEqual(dns._read_files(rem, ["/x*$(id)"]), "")
+        self.assertEqual(rem.cmds, [])

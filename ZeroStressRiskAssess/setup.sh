@@ -38,7 +38,7 @@ check_tools() {
   command -v nmap >/dev/null && ok "nmap" || miss "nmap            -> sudo apt install nmap"
   command -v ssh-audit >/dev/null && ok "ssh-audit" || miss "ssh-audit       -> sudo apt install ssh-audit   (or: pipx install ssh-audit)"
   command -v grype >/dev/null && ok "grype $(grype version 2>/dev/null | awk '/^Version/ {print $2}')" \
-    || miss "grype (CVE)     -> curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin"
+    || miss "grype (CVE)     -> see README, Requirements (release from GitHub, checksum verified)"
   if command -v trivy >/dev/null; then
     tv=$(trivy --version 2>/dev/null | awk '/^Version/ {print $2; exit}')
     # v0.69.4 is the malicious release of the March 2026 supply-chain attack (CVE-2026-33634).
@@ -61,7 +61,7 @@ check_tools() {
   if command -v docker >/dev/null && docker compose version >/dev/null 2>&1; then ok "docker + compose (lab only)"
   else miss "docker (lab only) -> https://docs.docker.com/engine/install/ubuntu/"; fi
   [ -f vendor/lynis/lynis ] && ok "Lynis $(grep -m1 'PROGRAM_VERSION=' vendor/lynis/lynis | cut -d'"' -f2) in vendor/lynis" \
-    || miss "Lynis           -> git clone --depth 1 https://github.com/CISOfy/lynis vendor/lynis"
+    || miss "Lynis           -> ./setup.sh (downloads the validated commit into vendor/lynis)"
 }
 
 CHECK_ONLY=0 WEB=0 LINK=1
@@ -110,11 +110,23 @@ if [ "$CHECK_ONLY" = 0 ]; then
   [ "$WEB" = 0 ] || extras=pdf,web             # [web] = Streamlit, for zsra web
   .venv/bin/pip install --quiet -e ".[$extras]"
   echo "==> Lynis (copied to the target during the assessment, never installed)"
-  if [ ! -f vendor/lynis/lynis ]; then
-    git clone --quiet --depth 1 https://github.com/CISOfy/lynis vendor/lynis
-  else
-    git -C vendor/lynis pull --quiet --ff-only || echo "  (Lynis update failed: keeping the current version)"
+  # The validated commit, written once in zerostressriskassess/portable.py (zsra checks it again before every run).
+  # No "git pull": Lynis runs as root on the targets, an update is a decision (change LYNIS_COMMIT), not a side effect.
+  LYNIS_COMMIT=$(sed -n 's/^LYNIS_COMMIT = "\([0-9a-f]\{40\}\)"$/\1/p' zerostressriskassess/portable.py)
+  [ -n "$LYNIS_COMMIT" ] || { echo "ERROR: LYNIS_COMMIT not found in zerostressriskassess/portable.py"; exit 1; }
+  if [ ! -d vendor/lynis/.git ]; then
+    rm -rf vendor/lynis
+    git init --quiet vendor/lynis
+    git -C vendor/lynis remote add origin https://github.com/CISOfy/lynis
   fi
+  if [ "$(git -C vendor/lynis rev-parse HEAD 2>/dev/null)" != "$LYNIS_COMMIT" ]; then
+    git -C vendor/lynis fetch --quiet --depth 1 origin "$LYNIS_COMMIT"
+    git -C vendor/lynis checkout --quiet --detach "$LYNIS_COMMIT"
+  fi
+  if [ "$(git -C vendor/lynis rev-parse HEAD)" != "$LYNIS_COMMIT" ] || [ -n "$(git -C vendor/lynis status --porcelain)" ]; then
+    echo "ERROR: vendor/lynis is not the validated commit $LYNIS_COMMIT or has local changes"; exit 1
+  fi
+  echo "  Lynis at the validated commit ${LYNIS_COMMIT:0:12}"
   if [ "$LINK" = 1 ]; then
     echo "==> Commands (no need to activate .venv)"
     link_commands

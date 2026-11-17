@@ -342,7 +342,7 @@ def tools_status():
     from .cli import DEFAULT_LYNIS
     rows = []
     for name, hint in (("nmap", "sudo apt install nmap"), ("ssh-audit", "sudo apt install ssh-audit"),
-                       ("grype", "curl -sSfL https://get.anchore.io/grype | sudo sh -s -- -b /usr/local/bin"),
+                       ("grype", "see README, Requirements (release from GitHub, checksum verified)"),
                        ("trivy", "see README, Requirements (Aqua's signed APT repository)")):
         where = shutil.which(name)
         rows.append((name, bool(where), where or hint))

@@ -48,6 +48,10 @@ class PkgManager:
     def allow_daemons(self):
         pass
 
+    def cache_snapshot(self):
+        """Downloaded package files kept by the package manager, before we install anything."""
+        return set()
+
 
 # ======================================================================= APT
 class Apt(PkgManager):
@@ -84,11 +88,11 @@ class Apt(PkgManager):
         return self.rem.run(self.ENV + "apt-get " + self.LOCK + "update -qq", sudo=True, timeout=900)
 
     def status(self, pkg):
-        r = self.rem.run(f"dpkg-query -W -f='${{db:Status-Status}}|${{Version}}' {pkg} 2>/dev/null")
+        r = self.rem.run(f"dpkg-query -W -f='${{db:Status-Status}}|${{Version}}' {shlex.quote(pkg)} 2>/dev/null")
         installed = None
         if r.rc == 0 and r.out.startswith("installed|"):
             installed = r.out.split("|", 1)[1]
-        c = self.rem.run(f"apt-cache policy {pkg} | awk '/Candidate:/{{print $2}}'")
+        c = self.rem.run(f"apt-cache policy {shlex.quote(pkg)} | awk '/Candidate:/{{print $2}}'")
         candidate = c.out.strip() or None
         if candidate == "(none)":
             candidate = None
@@ -153,7 +157,14 @@ class Apt(PkgManager):
         names = {l.strip() for l in r.out.splitlines() if l and not l[0].isspace() and not l.startswith("<")}
         return names | set(pkgs)
 
-    def remove(self, pkgs, keep_config=()):
+    DEB_RE = re.compile(r"[A-Za-z0-9+._~%-]+\.deb")
+    ARCHIVES = "/var/cache/apt/archives"
+
+    def cache_snapshot(self):
+        out = self.rem.run(f"ls -1 {self.ARCHIVES} 2>/dev/null").out.split()
+        return {n for n in out if self.DEB_RE.fullmatch(n)}
+
+    def remove(self, pkgs, keep_config=(), cache_before=None):
         # purge also removes configuration files and data (e.g. the ClamAV signature database).
         # keep_config: packages whose configuration files were ALREADY there before us (removed earlier without
         # purge): plain remove, so the target goes back to exactly that state and the owner's files stay.
@@ -165,7 +176,14 @@ class Apt(PkgManager):
         if keep:
             rk = self.rem.run(self.ENV + "apt-get " + self.LOCK + "remove -y " + _q(keep), sudo=True, timeout=900)
             r = rk if r is None or rk.rc != 0 else r
-        self.rem.run("apt-get clean", sudo=True)  # frees the cache of downloaded .deb files
+        # Only the .deb files downloaded during the run: "apt-get clean" (before 1.6.2) also emptied the owner's
+        # cache. Without the list taken before (cache_before=None) nothing is deleted: better a few files left
+        # than files of the owner removed.
+        if cache_before is not None:
+            new = sorted(self.cache_snapshot() - set(cache_before))
+            for i in range(0, len(new), 100):
+                self.rem.run("rm -f -- " + " ".join(shlex.quote(f"{self.ARCHIVES}/{n}") for n in new[i:i + 100]),
+                             sudo=True)
         return r
 
 
@@ -242,7 +260,7 @@ class Dnf(PkgManager):
             todo = set(r.out.split()) - seen
         return None
 
-    def remove(self, pkgs, keep_config=()):
-        r = self.rem.run(f"{self.bin} remove -y " + self.NO_AUTOREMOVE + _q(pkgs), sudo=True, timeout=900)
-        self.rem.run(f"{self.bin} clean all", sudo=True)
-        return r
+    def remove(self, pkgs, keep_config=(), cache_before=None):
+        # No "dnf clean all" (before 1.6.2): it also deleted the owner's cache. dnf does not keep the downloaded
+        # packages by default (keepcache=0), so there is nothing of ours to clean.
+        return self.rem.run(f"{self.bin} remove -y " + self.NO_AUTOREMOVE + _q(pkgs), sudo=True, timeout=900)
