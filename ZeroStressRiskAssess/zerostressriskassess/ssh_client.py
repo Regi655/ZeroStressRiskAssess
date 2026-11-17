@@ -5,6 +5,7 @@ target, only requires changes here.
 """
 from __future__ import annotations
 
+import os
 import shlex
 import socket
 import time
@@ -26,6 +27,27 @@ def _short(cmd: str) -> str:
         if line and not line.startswith("#"):
             return line[:70] + ("…" if len(line) > 70 else "")
     return "?"
+
+
+class AcceptNewAndSave(paramiko.MissingHostKeyPolicy):
+    """OpenSSH's StrictHostKeyChecking=accept-new: an UNKNOWN host key is accepted once and written to
+    ~/.ssh/known_hosts (hashed name, as ssh does with HashKnownHosts), so the next connection verifies it.
+    A key that CHANGED is still refused: paramiko raises BadHostKeyException before asking any policy.
+
+    Before 1.6.2 AutoAddPolicy was used: it saves only into a file loaded with load_host_keys(), and the client
+    loads known_hosts with load_system_host_keys(), so the key was never saved and every run with
+    --accept-new-hostkey accepted whatever key it was shown."""
+
+    def __init__(self, path=None):
+        self.path = os.path.expanduser(path or "~/.ssh/known_hosts")
+
+    def missing_host_key(self, client, hostname, key):
+        os.makedirs(os.path.dirname(self.path), mode=0o700, exist_ok=True)
+        entry = paramiko.hostkeys.HostKeyEntry([paramiko.HostKeys.hash_host(hostname)], key)
+        fd = os.open(self.path, os.O_WRONLY | os.O_APPEND | os.O_CREAT, 0o600)
+        with os.fdopen(fd, "a") as f:
+            f.write(entry.to_line())
+        client.get_host_keys().add(hostname, key.get_name(), key)
 
 
 @dataclass
@@ -55,9 +77,8 @@ class Remote:
         c = paramiko.SSHClient()
         c.load_system_host_keys()
         # RejectPolicy: accepting any host key would let a man-in-the-middle impersonate the target.
-        # --accept-new-hostkey makes acceptance an explicit decision on first contact.
-        c.set_missing_host_key_policy(
-            paramiko.AutoAddPolicy() if self.accept_new_hostkey else paramiko.RejectPolicy())
+        # --accept-new-hostkey makes acceptance an explicit decision on first contact, and the key is saved.
+        c.set_missing_host_key_policy(AcceptNewAndSave() if self.accept_new_hostkey else paramiko.RejectPolicy())
         c.connect(self.host, port=self.port, username=self.user,
                   key_filename=self.key_file, password=self.password, passphrase=self.passphrase,
                   timeout=15, allow_agent=True, look_for_keys=True)
@@ -96,7 +117,9 @@ class Remote:
         inner += cmd
         wrapped = f"bash -c {shlex.quote(inner)}"
         if need_sudo:
-            wrapped = ("sudo -S -p '' " if has_sudo_pw else "sudo -n ") + wrapped
+            # -k: ignore cached credentials, so sudo always READS the password line we send. Without it, a sudo with
+            # a valid timestamp did not read it and the password stayed on the command's standard input.
+            wrapped = ("sudo -k -S -p '' " if has_sudo_pw else "sudo -n ") + wrapped
         return wrapped
 
     def run(self, cmd: str, sudo: bool = False, timeout: int = 600, trusted_path: bool = True) -> CmdResult:

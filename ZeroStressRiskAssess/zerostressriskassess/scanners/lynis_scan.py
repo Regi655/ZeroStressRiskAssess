@@ -60,8 +60,8 @@ def run(ctx) -> ScanResult:
             res.add("info", "Portable Lynis: no report produced", out[-500:])
             return res
         return parse(res, rep, ctx)
-    return res.skip("Lynis not found on the controller: download it with "
-                    "'git clone https://github.com/CISOfy/lynis vendor/lynis' (see README)")
+    why = portable.why_unavailable(ctx.opts.lynis_dir) if getattr(ctx.opts, "lynis_dir", "") else None
+    return res.skip(f"Lynis not run: {why}" if why else "Lynis not found on the controller: run ./setup.sh")
 
 
 def parse(res, rep: str, ctx) -> ScanResult:

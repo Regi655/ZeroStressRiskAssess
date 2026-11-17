@@ -21,6 +21,7 @@ Safeguards against a wrong removal:
 from __future__ import annotations
 
 import json
+import re
 import shlex
 from datetime import datetime
 
@@ -51,6 +52,30 @@ DETECT_ONLY = {"rkhunter": "rkhunter"}
 MANIFEST_DIR = "/var/lib/zerostressriskassess"
 MANIFEST = MANIFEST_DIR + "/manifest.json"
 MAX_AUTO_REMOVE = 80  # a normal installation of these tools pulls in a few dozen packages
+# System users and groups the tool packages create (clamav on Debian/Ubuntu; clamupdate, clamscan and virusgroup
+# with EPEL). Package removal leaves them (Debian policy never deletes system users): removed by us, but ONLY if
+# they did not exist before the run.
+OWN_ACCOUNTS = {"clamav", "clamupdate", "clamscan", "virusgroup"}
+ACCOUNTS_CMD = "getent passwd | cut -d: -f1 | sed 's/^/u:/'; getent group | cut -d: -f1 | sed 's/^/g:/'"
+ACCOUNT_RE = re.compile(r"[ug]:[a-z_][a-z0-9_-]{0,31}")
+
+
+def accounts(rem) -> set:
+    """{'u:name', 'g:name'} of the target's users and groups."""
+    return {a for a in rem.run(ACCOUNTS_CMD).out.split() if ACCOUNT_RE.fullmatch(a)}
+
+
+def remove_new_accounts(rem, before, log=None) -> list:
+    """Delete the users/groups of OWN_ACCOUNTS created after `before`. Returns what was removed."""
+    if not before:
+        return []      # no initial list (manifest of an older version): nothing is touched
+    new = accounts(rem) - set(before)
+    done = []
+    for kind, cmd in (("u", "userdel"), ("g", "groupdel")):
+        for name in sorted(a[2:] for a in new if a.startswith(kind + ":") and a[2:] in OWN_ACCOUNTS):
+            if rem.run(f"{cmd} {shlex.quote(name)}", sudo=True).rc == 0:
+                done.append(f"{'user' if kind == 'u' else 'group'} {name}")
+    return done
 
 
 class StaleManifest(RuntimeError):
@@ -71,6 +96,8 @@ class ToolManager:
         self.log: list[dict] = []        # reported: what was done on the target
         self.available: set[str] = set()  # tools actually usable
         self._before: set[str] = set()
+        self._accounts_before: set[str] = set()
+        self._cache_before = None
         self._conf_before: set[str] = set()
         self._prepared = False            # True only after a successful snapshot + manifest
         self.installed: list[str] = []    # packages installed by us during this run
@@ -89,6 +116,8 @@ class ToolManager:
             "before": sorted(self._before),
             "config_only": sorted(self._conf_before),
             "planned": sorted(self._planned),
+            "accounts_before": sorted(self._accounts_before),
+            "cache_before": None if self._cache_before is None else sorted(self._cache_before),
         })
         # Uploaded first to the SSH user's home directory, then moved into place by root with mode 600
         # (it only contains package names, but nobody else needs it).
@@ -135,6 +164,8 @@ class ToolManager:
         self._conf_before = self.pm.config_only()   # removed earlier, configuration kept: restored as it was
         if not self._before:
             raise RuntimeError("Empty list of installed packages: aborting for safety.")
+        self._accounts_before = accounts(self.rem)      # users and groups the packages may add
+        self._cache_before = self.pm.cache_snapshot()   # package files already downloaded by the owner
         self.pm.block_daemons()
         if not self._write_manifest():
             self.pm.allow_daemons()
@@ -249,11 +280,15 @@ class ToolManager:
                                       "packages not installed by us (manifest kept)", detail=extra)
                     return
 
-            r = self.pm.remove(new_pkgs, keep_config=self._conf_before)
+            r = self.pm.remove(new_pkgs, keep_config=self._conf_before, cache_before=self._cache_before)
             leftovers = sorted(set(new_pkgs) & self.pm.snapshot())
             self._note(tool="*", package=",".join(new_pkgs), action=f"removal rc={r.rc}",
                        detail=("STILL PRESENT: " + ",".join(leftovers)) if leftovers else "")
             if r.rc == 0 and not leftovers:
+                gone = remove_new_accounts(self.rem, self._accounts_before)
+                if gone:
+                    self._note(tool="*", package="-", action="system accounts created by the packages removed",
+                               detail=", ".join(gone))
                 self._delete_manifest()
         finally:
             self.pm.allow_daemons()
@@ -326,10 +361,13 @@ def recover_interrupted(rem, osinfo: OSInfo, confirm, log=print) -> bool:
         if not confirm(f"Remove these {len(new)} packages from the target?"):
             log("Cancelled by the user.")
             return False
-        rr = pm.remove(new, keep_config=set(data.get("config_only", [])))
+        rr = pm.remove(new, keep_config=set(data.get("config_only", [])), cache_before=data.get("cache_before"))
         log(f"Removal completed (rc={rr.rc}).")
         if rr.rc != 0:
             return False
+        gone = remove_new_accounts(rem, data.get("accounts_before"))
+        if gone:
+            log(f"System accounts created by the packages removed: {', '.join(gone)}")
     else:
         log("No new packages compared with the manifest.")
     if data.get("policy_rc_created"):
