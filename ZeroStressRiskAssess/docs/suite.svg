@@ -1,8 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="720" height="210" viewBox="0 0 720 210" role="img"
+<svg xmlns="http://www.w3.org/2000/svg" width="988" height="262" viewBox="0 0 988 262" role="img"
      aria-labelledby="t d">
   <title id="t">The ZeroStressRiskAssess suite</title>
-  <desc id="d">zsra, the scanner, uploads report.json with its SHA-256 over HTTPS with an API token to
-  ZeroStressRiskAssessWeb, the private portal that keeps the reports of every machine.</desc>
+  <desc id="d">Three tools. ZeroStressRiskAssess (zsra) assesses Linux machines and uploads report.json with its
+  SHA-256 over HTTPS with an API token to ZeroStressRiskAssessWeb, the private portal. ZeroStressWebScan (zsws)
+  assesses web applications and, with --host, runs zsra's host checks ported to Java. All three share the risk model
+  risk = impact x likelihood, the report style and the white-and-orange theme.</desc>
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
            text-anchor: middle; }
@@ -12,46 +14,65 @@
     .pilltext { font-size: 12px; font-weight: 600; }
     .title { font-size: 17px; font-weight: 700; }
     .sub { font-size: 13px; font-weight: 600; }
-    .det, .lab { font-size: 12px; }
+    .det, .lab, .bartext { font-size: 12px; }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 12px; }
     .arrow { stroke-width: 2.5; fill: none; }
+    .bar { stroke-width: 1; }
     text { fill: #1f2328; }
-    .box { fill: #f6f8fa; stroke: #d1d9e0; }
-    .here { stroke: #0969da; }
-    .pill { fill: #ddf4ff; stroke: #0969da; }
-    .pilltext, .sub { fill: #0969da; }
+    .box { fill: #ffffff; stroke: #d1d9e0; }
+    .here { fill: #fff4ec; stroke: #c2410c; }
+    .pill { fill: #fff4ec; stroke: #c2410c; }
+    .pilltext, .sub { fill: #c2410c; }
     .det, .mono { fill: #59636e; }
-    .arrow { stroke: #0969da; }
-    .head { fill: #0969da; }
+    .arrow { stroke: #c2410c; }
+    .head { fill: #c2410c; }
+    .bar { fill: #fff4ec; stroke: #fdba8c; }
+    .bartext { fill: #9a3412; }
     @media (prefers-color-scheme: dark) {
     text { fill: #e6edf3; }
     .box { fill: #151b23; stroke: #3d444d; }
-    .here { stroke: #4493f8; }
-    .pill { fill: #0f2a4a; stroke: #4493f8; }
-    .pilltext, .sub { fill: #4493f8; }
+    .here { fill: #130800; stroke: #f3723d; }
+    .pill { fill: #130800; stroke: #f3723d; }
+    .pilltext, .sub { fill: #f3723d; }
     .det, .mono { fill: #9198a1; }
-    .arrow { stroke: #4493f8; }
-    .head { fill: #4493f8; }
+    .arrow { stroke: #f3723d; }
+    .head { fill: #f3723d; }
+    .bar { fill: #130800; stroke: #733002; }
+    .bartext { fill: #ed8765; }
     }
   </style>
-  <rect class="box here" x="8" y="46" width="262" height="148" rx="12"/>
-  <rect class="pill" x="87.0" y="33" width="104" height="24" rx="12"/>
-  <text class="pilltext" x="139.0" y="49.5">you are here</text>
-  <text class="title" x="139.0" y="86">ZeroStressRiskAssess</text>
-  <text class="sub" x="139.0" y="108">zsra · the scanner</text>
-  <text class="det" x="139.0" y="138">nmap · ssh-audit · Lynis</text>
-  <text class="det" x="139.0" y="157">ClamAV · chkrootkit · Grype · Trivy</text>
-  <text class="det" x="139.0" y="176">risk = impact × likelihood</text>
-  <rect class="box" x="450" y="46" width="262" height="148" rx="12"/>
-  <text class="title" x="581.0" y="86">ZeroStressRiskAssessWeb</text>
-  <text class="sub" x="581.0" y="108">the private portal</text>
-  <text class="det" x="581.0" y="138">password + 2FA, every user apart</text>
-  <text class="det" x="581.0" y="157">history · comparisons · overview</text>
-  <text class="det" x="581.0" y="176">a decision on every risk</text>
-  <line class="arrow" x1="280" y1="120.0" x2="428" y2="120.0"/>
-  <path class="head" d="M 438 120.0 l -13 -7 v 14 z"/>
-  <text class="lab" x="359.0" y="94.0">report.json</text>
-  <text class="lab" x="359.0" y="110.0">+ SHA-256</text>
-  <text class="lab" x="359.0" y="144.0">HTTPS · API token</text>
-  <text class="mono" x="359.0" y="162.0">zsra --upload</text>
+  <rect class="box" x="8" y="46" width="244" height="150" rx="12"/>
+  <text class="title" x="130.0" y="86">ZeroStressWebScan</text>
+  <text class="sub" x="130.0" y="108">zsws · web applications</text>
+  <text class="det" x="130.0" y="138">frontend + backend, black-box</text>
+  <text class="det" x="130.0" y="157">--host: the machine behind it</text>
+  <text class="det" x="130.0" y="176">OWASP checks · HTML/MD/JSON/SARIF</text>
+  <rect class="box here" x="372" y="46" width="244" height="150" rx="12"/>
+  <rect class="pill" x="442.0" y="33" width="104" height="24" rx="12"/>
+  <text class="pilltext" x="494.0" y="49.5">you are here</text>
+  <text class="title" x="494.0" y="86">ZeroStressRiskAssess</text>
+  <text class="sub" x="494.0" y="108">zsra · Linux machines</text>
+  <text class="det" x="494.0" y="138">nmap · ssh-audit · Lynis</text>
+  <text class="det" x="494.0" y="157">ClamAV · chkrootkit · Grype · Trivy</text>
+  <text class="det" x="494.0" y="176">HTML · Markdown · JSON · PDF</text>
+  <rect class="box" x="736" y="46" width="244" height="150" rx="12"/>
+  <text class="title" x="858.0" y="86">ZeroStressRiskAssessWeb</text>
+  <text class="sub" x="858.0" y="108">zsra-web · the private portal</text>
+  <text class="det" x="858.0" y="138">password + 2FA, every user apart</text>
+  <text class="det" x="858.0" y="157">history · comparisons · overview</text>
+  <text class="det" x="858.0" y="176">a decision on every risk</text>
+  <line class="arrow" x1="362" y1="121.0" x2="272" y2="121.0"/>
+  <path class="head" d="M 262 121.0 l 13 -7 v 14 z"/>
+  <text class="lab" x="312.0" y="95.0">host checks</text>
+  <text class="lab" x="312.0" y="111.0">ported to Java</text>
+  <text class="lab" x="312.0" y="145.0">one risk table</text>
+  <text class="mono" x="312.0" y="161.0">zsws --host</text>
+  <line class="arrow" x1="626" y1="121.0" x2="716" y2="121.0"/>
+  <path class="head" d="M 726 121.0 l -13 -7 v 14 z"/>
+  <text class="lab" x="676.0" y="95.0">report.json</text>
+  <text class="lab" x="676.0" y="111.0">+ SHA-256</text>
+  <text class="lab" x="676.0" y="145.0">HTTPS · API token</text>
+  <text class="mono" x="676.0" y="161.0">zsra --upload</text>
+  <rect class="bar" x="8" y="214" width="972" height="30" rx="8"/>
+  <text class="bartext" x="494.0" y="233.5">one suite · risk = impact × likelihood · the same report style · white-and-orange theme · assess only what you are authorised to assess</text>
 </svg>

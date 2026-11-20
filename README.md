@@ -27,13 +27,16 @@ interface** on the controller (start assessments, follow them live, browse and c
 ### Part of the ZeroStressRiskAssess suite
 
 <p align="center">
-  <img src="ZeroStressRiskAssess/docs/suite.svg" width="720"
-       alt="zsra, the scanner, uploads report.json with its SHA-256 over HTTPS with an API token to ZeroStressRiskAssessWeb, the private portal">
+  <img src="ZeroStressRiskAssess/docs/suite.svg" width="880"
+       alt="The ZeroStressRiskAssess suite: ZeroStressWebScan assesses web applications and, with --host, runs the host checks of ZeroStressRiskAssess ported to Java; ZeroStressRiskAssess assesses Linux machines and uploads report.json with its SHA-256 over HTTPS with an API token to ZeroStressRiskAssessWeb, the private portal">
 </p>
 
 <p align="center">
-  <b>ZeroStressRiskAssess</b> (this repository) &nbsp;→&nbsp;
-  <a href="https://github.com/Regi655/ZeroStressRiskAssessWeb"><b>ZeroStressRiskAssessWeb</b></a>, the portal
+  <a href="https://github.com/Regi655/ZeroStressWebScan"><b>ZeroStressWebScan</b></a> · web applications
+  &nbsp;|&nbsp;
+  <b>ZeroStressRiskAssess</b> · Linux machines (this repository)
+  &nbsp;|&nbsp;
+  <a href="https://github.com/Regi655/ZeroStressRiskAssessWeb"><b>ZeroStressRiskAssessWeb</b></a> · the private portal
 </p>
 
 zsra is the scanner; [ZeroStressRiskAssessWeb](https://github.com/Regi655/ZeroStressRiskAssessWeb) is its private
