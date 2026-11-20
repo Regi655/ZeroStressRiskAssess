@@ -42,6 +42,11 @@ portal, where every user keeps the reports of their machines behind password and
 once; from then on `zsra ... --upload` (or every assessment, with `--auto`) sends the report to the portal
 ([section 5](#uploading-to-the-portal-the-suite)). The portal's repository is private for now: access on request.
 
+**Web applications, too.** [**ZeroStressWebScan**](https://github.com/Regi655/ZeroStressWebScan) (`zsws`) is the
+web-application counterpart of this tool: a black-box scan of a site that shares the same risk model
+(`risk = impact × likelihood`), the same report style and the same dark theme. With `--host` it also looks at the
+machine behind the site — zsra's host checks ported to Java — and merges the web and host findings into one risk table.
+
 ![Risk matrix from the lab](ZeroStressRiskAssess/docs/screenshot-matrix.png)
 
 *Real report from the Docker lab included in the repository (fake data and credentials). Full example:
